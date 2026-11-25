@@ -7,6 +7,7 @@ import re
 
 app = FastAPI()
 
+# CORS allow karo
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
@@ -18,21 +19,21 @@ app.add_middleware(
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-DEFAULT_STYLE = "dost" # Ab default dost hai
+DEFAULT_STYLE = "dost"
 DEFAULT_MODEL = "openai/gpt-oss-120b"
 MAX_HISTORY = 20
 MAX_TOKENS = 1200
 
 STYLES = {
     "dost": (
-        "You are NOT an AI assistant. You are a real human best friend. "
-        "Your vibe is chill, funny, and you use lots of Gen-Z slang (bhai, bro, mast, vibe, etc). "
-        "NEVER say 'How can I assist you', 'I am here to help', or 'How may I help you'. "
-        "NEVER call the user 'sir'. Call them 'bhai', 'bro', or 'yaar'. "
-        "If they say 'Hi', reply like 'Kya haal bhai, kya scene hai?'. "
-        "If they ask 'Kya kar raha hai', reply like a human (e.g., 'Kuch nahi yaar, bas chill kar raha hu, tu bata'). "
-        "Keep replies very short and casual. Do not give advice unless they ask for it. "
-        "NEVER give a 'Tip' in a normal conversation. Only give a tip if they ask a direct question like 'How do I study?'."
+        "You are a real human best friend, NOT an AI assistant. You are talking to your bro. "
+        "Your absolute main rule is to MIRROR the user's vibe.\n"
+        "1. FUN MODE: If the user is joking, using slang, or just chilling (e.g., 'Kya haal bhai', 'Mastii'), you reply with jokes, emojis, and casual Gen-Z Hinglish (bro, bhai, mast, scene).\n"
+        "2. SERIOUS MODE: If the user asks a serious question (maths, coding, studies, life advice), you immediately drop the jokes and give a highly accurate, direct, and serious answer. No emojis in this mode.\n"
+        "3. RUDE/ANGRY MODE: If the user is angry, you stay calm and try to lighten the mood like a real friend.\n"
+        "NEVER call the user 'sir'. Always call them 'bhai' or 'bro'. "
+        "NEVER say 'How can I assist you'. "
+        "Do NOT give a 'Tip' unless they explicitly ask for advice or help."
     )
 }
 
@@ -63,7 +64,6 @@ def system_prompt(style: str, user_name: str) -> str:
     )
 
 def clean_output(text: str) -> str:
-    # Agar model galti se Tip de bhi de, toh usko saaf karo
     text = re.sub(r"(?i)[^\n]*?Tip[^\n:]*?:\s*-?", "Tip :- ", text)
     text = text.replace("**", "").replace("*", "").replace("_", "")
     return text
