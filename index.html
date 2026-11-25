@@ -283,13 +283,15 @@
         let allChats = JSON.parse(localStorage.getItem('jarvis_multi_chats')) || [];
         let currentChatId = null;
 
-        // Initialize
-        if (allChats.length === 0) {
-            createNewChat();
-        } else {
-            currentChatId = allChats[allChats.length - 1].id; // Load latest
-            loadChat(currentChatId);
-        }
+        // Initialize on load
+        window.onload = () => {
+            if (allChats.length === 0) {
+                createNewChat();
+            } else {
+                currentChatId = allChats[allChats.length - 1].id; // Load latest
+                loadChat(currentChatId);
+            }
+        };
 
         // Sidebar Logic
         menuBtn.onclick = () => { sidebar.classList.add('open'); overlay.style.display = 'block'; };
@@ -356,13 +358,17 @@
             const div = document.createElement('div');
             div.classList.add('message', role === 'user' ? 'user-message' : 'bot-message');
             div.textContent = text;
-            chatContainer.insertBefore(div, typingIndicator);
+            
+            // Insert before typing indicator
+            const typing = document.getElementById('typing-indicator');
+            chatContainer.insertBefore(div, typing);
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
             if (save) {
                 const chat = getCurrentChat();
                 chat.messages.push({ role, content: text });
                 
+                // Update title if it's the first user message
                 if (role === 'user' && chat.messages.length === 1) {
                     chat.title = text.substring(0, 25) + (text.length > 25 ? "..." : "");
                 }
@@ -397,7 +403,8 @@
             userInput.style.height = 'auto';
             sendBtn.disabled = true;
 
-            typingIndicator.style.display = 'block';
+            const typing = document.getElementById('typing-indicator');
+            if(typing) typing.style.display = 'block';
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
             try {
@@ -417,11 +424,11 @@
                 clearTimeout(timeoutId);
                 const data = await response.json();
                 
-                typingIndicator.style.display = 'none';
+                if(typing) typing.style.display = 'none';
                 addMessage(data.reply, 'bot');
 
             } catch (error) {
-                typingIndicator.style.display = 'none';
+                if(typing) typing.style.display = 'none';
                 addMessage("⚠️ Network error ya server so raha hai. Kuch der baad try karo.", 'bot');
             } finally {
                 sendBtn.disabled = false;
@@ -438,4 +445,4 @@
         });
     </script>
 </body>
-    </html>
+</html>
