@@ -591,21 +591,25 @@ function getRandomPrompts(count = 4) {
   }
 
   function buildEmpty() {
-    const wrap = document.createElement('div');
-    wrap.className = 'empty';
-    const orb = document.createElement('div'); orb.className = 'orb';
-    orb.appendChild(makeAvatar('lg'));
-    const h = document.createElement('h2'); h.textContent = GREETING;
-    const p = document.createElement('p'); p.textContent = 'Ask in Hindi, English or Hinglish.';
-    const grid = document.createElement('div'); grid.className = 'prompts';
-    PROMPTS.forEach(t => {
-      const b = document.createElement('button');
-      b.type = 'button'; b.className = 'prompt'; b.dataset.prompt = t; b.textContent = t;
-      grid.appendChild(b);
-    });
-    wrap.append(orb, h, p, grid);
-    return wrap;
-  }
+  const wrap = document.createElement('div');
+  wrap.className = 'empty';
+  const orb = document.createElement('div'); orb.className = 'orb';
+  orb.appendChild(makeAvatar('lg'));
+  const h = document.createElement('h2'); h.textContent = GREETING;
+  const p = document.createElement('p'); p.textContent = 'Ask in Hindi, English or Hinglish.';
+  const grid = document.createElement('div'); grid.className = 'prompts';
+  
+  // Yahan hum random prompts utha rahe hain
+  const randomPrompts = getRandomPrompts(4);
+  randomPrompts.forEach(t => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'prompt'; b.dataset.prompt = t; b.textContent = t;
+    grid.appendChild(b);
+  });
+  
+  wrap.append(orb, h, p, grid);
+  return wrap;
+}
 
   function renderChat() {
     const chat = getChat();
