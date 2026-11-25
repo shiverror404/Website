@@ -848,8 +848,8 @@
         pushMessage(chatId, 'bot', String(data.reply));
         if (chatId === currentChatId) appendMessage({ role: 'bot', content: String(data.reply) });
       } else if (chatId === currentChatId) {
-        const detail = data ? JSON.stringify(data).slice(0, 200) : 'HTTP ' + response.status;
-        showError("The server didn't send a reply.", detail, retry);
+        if (data && data.error) showError(String(data.error), '', retry);
+        else showError("The server didn't send a reply.", data ? JSON.stringify(data).slice(0, 200) : 'HTTP ' + response.status, retry);
       }
     } catch (err) {
       if (chatId === currentChatId) {
@@ -933,6 +933,9 @@
   });
 
   /* ================= start ================= */
+  // Wake the (free-tier) server as soon as the page opens so the first reply is not slow.
+  try { fetch(API_URL.replace(/\/chat$/, '/health'), { cache: 'no-store' }).catch(() => {}); } catch (e) {}
+
   [$('brand-avatar'), $('top-avatar')].forEach(slot => {
     const img = new Image();
     img.alt = ''; img.decoding = 'async'; img.src = LOGO_URL;
