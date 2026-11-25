@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>JARVIS AI</title>
     <style>
-        /* Premium Dark Theme + Cyberpunk Vibe */
         :root {
             --bg: #050505;
             --panel: rgba(20, 20, 25, 0.85);
@@ -17,17 +16,11 @@
             --border-color: rgba(0, 210, 255, 0.2);
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
 
         body {
             background-color: var(--bg);
-            background-image: 
-                radial-gradient(circle at 50% 0%, #101826 0%, #050505 70%);
+            background-image: radial-gradient(circle at 50% 0%, #101826 0%, #050505 70%);
             color: var(--text);
             display: flex;
             flex-direction: column;
@@ -50,9 +43,10 @@
             z-index: 10;
         }
 
+        /* Logo Style */
         header img {
-            width: 38px;
-            height: 38px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             border: 2px solid var(--accent);
             box-shadow: 0 0 15px var(--accent-glow);
@@ -79,7 +73,6 @@
             scroll-behavior: smooth;
         }
 
-        /* Hide scrollbar for cleaner look */
         #chat-container::-webkit-scrollbar { width: 6px; }
         #chat-container::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
 
@@ -92,7 +85,6 @@
             word-wrap: break-word;
             white-space: pre-wrap;
             animation: slideUp 0.3s ease-out forwards;
-            position: relative;
         }
 
         .user-message {
@@ -112,7 +104,6 @@
             backdrop-filter: blur(5px);
         }
 
-        /* Typing Indicator */
         .typing {
             align-self: flex-start;
             font-style: italic;
@@ -174,33 +165,24 @@
         #send-btn:active { transform: scale(0.9); }
         #send-btn:disabled { background: #555; box-shadow: none; cursor: not-allowed; }
 
-        /* Animations */
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes pulseGlow {
-            from { box-shadow: 0 0 10px var(--accent-glow); }
-            to { box-shadow: 0 0 25px var(--accent); }
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
-        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulseGlow { from { box-shadow: 0 0 10px var(--accent-glow); } to { box-shadow: 0 0 25px var(--accent); } }
+        @keyframes blink { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
     </style>
 </head>
 <body>
 
     <header>
-        <!-- YAHAN APNE LOGO KA LINK DAALNA -->
-        <img src="https://cdn-icons-png.flaticon.com/512/8649/8649607.png" alt="J">
+        <!-- APNE LOGO KA LINK YAHAN DAALNA HAI -->
+<img src="https://raw.githubusercontent.com/shiverror404/Website/main/file_00000000acdc82118e20363e93b6c517.png" alt="J" id="bot-logo">
         <h1>JARVIS AI</h1>
     </header>
 
+    <!-- History clear karne ka button (Optional, par useful hai) -->
+    <button onclick="clearHistory()" style="position: absolute; top: 18px; right: 15px; background: transparent; color: #888; border: 1px solid #444; padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; cursor: pointer; z-index: 20;">Clear</button>
+
     <div id="chat-container">
-        <div class="message bot-message">Namaste, sir. Main JARVIS hoon. Aaj main aapki kya madad kar sakta hoon?</div>
+        <!-- Messages yahan JS se load honge -->
         <div class="typing" id="typing-indicator">JARVIS is typing...</div>
     </div>
 
@@ -210,7 +192,6 @@
     </div>
 
     <script>
-        // ⚠️ YAHAN RENDER WALA LINK HAI
         const API_URL = "https://website-1wy5.onrender.com/chat"; 
         
         const chatContainer = document.getElementById('chat-container');
@@ -218,9 +199,37 @@
         const sendBtn = document.getElementById('send-btn');
         const typingIndicator = document.getElementById('typing-indicator');
 
-        let chatHistory = [];
+        // LocalStorage se history load karo
+        let chatHistory = JSON.parse(localStorage.getItem('jarvisHistory')) || [];
 
-        // Auto-resize textarea
+        // Page load hote hi purane messages render karo
+        function loadHistory() {
+            // Purane messages hatao (typing indicator chhod ke)
+            const messages = chatContainer.querySelectorAll('.message');
+            messages.forEach(msg => msg.remove());
+
+            chatHistory.forEach(msg => {
+                const div = document.createElement('div');
+                div.classList.add('message', msg.role === 'user' ? 'user-message' : 'bot-message');
+                div.textContent = msg.content;
+                chatContainer.insertBefore(div, typingIndicator);
+            });
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Initial welcome message agar history khaali hai
+        function showWelcome() {
+            if (chatHistory.length === 0) {
+                const div = document.createElement('div');
+                div.classList.add('message', 'bot-message');
+                div.textContent = "Namaste, sir. Main JARVIS hoon. Aaj main aapki kya madad kar sakta hoon?";
+                chatContainer.insertBefore(div, typingIndicator);
+            }
+        }
+
+        loadHistory();
+        showWelcome();
+
         userInput.addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
@@ -234,11 +243,29 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
+        function saveHistory() {
+            // Sirf last 50 messages save karo taaki browser slow na ho
+            if (chatHistory.length > 50) chatHistory = chatHistory.slice(-50);
+            localStorage.setItem('jarvisHistory', JSON.stringify(chatHistory));
+        }
+
+        function clearHistory() {
+            if (confirm("Kya aap sach mein chat history delete karna chahte hain?")) {
+                chatHistory = [];
+                localStorage.removeItem('jarvisHistory');
+                loadHistory();
+                showWelcome();
+            }
+        }
+
         async function sendMessage() {
             const text = userInput.value.trim();
             if (!text) return;
 
             addMessage(text, 'user');
+            chatHistory.push({ role: "user", content: text }); // LocalStorage ke liye
+            saveHistory();
+
             userInput.value = '';
             userInput.style.height = 'auto';
             sendBtn.disabled = true;
@@ -248,12 +275,13 @@
 
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 sec timeout
+                const timeoutId = setTimeout(() => controller.abort(), 60000);
 
+                // API ko bhejte waqt pichli history bhi bhejte hain
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text, history: chatHistory }),
+                    body: JSON.stringify({ message: text, history: chatHistory.slice(0, -1) }), // Last message user ka hi hai
                     signal: controller.signal
                 });
                 
@@ -262,11 +290,9 @@
                 
                 typingIndicator.style.display = 'none';
                 addMessage(data.reply, 'bot');
-
-                // History update karo
-                chatHistory.push({ role: "user", content: text });
+                
                 chatHistory.push({ role: "assistant", content: data.reply });
-                if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+                saveHistory();
 
             } catch (error) {
                 typingIndicator.style.display = 'none';
