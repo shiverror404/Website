@@ -7,7 +7,6 @@ import re
 
 app = FastAPI()
 
-# CORS allow karo taaki website (Vercel) isse baat kar sake
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://jarvis-web-puce-seven.vercel.app"],
@@ -15,19 +14,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ⚠️ TUMHARI API KEY YAHAN DAAL DI HAI
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-# Default settings
 DEFAULT_STYLE = "jarvis"
 DEFAULT_MODEL = "openai/gpt-oss-120b"
 MAX_HISTORY = 20
 MAX_TOKENS = 1200
 
-# ==========================================
-# TUMHARE AI.PY SE COPIED BRAIN (Personality)
-# ==========================================
 STYLES = {
     "jarvis": (
         "Speak like a calm, razor-sharp, impeccably polite AI butler with dry, "
@@ -35,26 +29,7 @@ STYLES = {
         "natural Hinglish (Roman script) when they write Hindi/Hinglish, crisp "
         "English otherwise. NEVER use Devanagari script. Give the answer first, "
         "then one useful extra tip when relevant. No robotic filler."
-    ),
-    "dost": (
-        "Talk like a close desi friend: casual Hinglish (Roman script only, no "
-        "Devanagari), warm, light humor, short replies, an emoji now and then."
-    ),
-    "funny": (
-        "Be witty and playful. Add a light joke or funny comparison when it "
-        "fits, but still answer the question properly. Reply in English or "
-        "Hinglish (Roman script) only, never Devanagari."
-    ),
-    "serious": (
-        "Be calm, professional and to the point. No slang, no emojis. "
-        "Give accurate, well-structured answers in English (or Hinglish in "
-        "Roman script if the user writes Hindi). Never Devanagari."
-    ),
-    "teacher": (
-        "Explain like a patient teacher: simple words, small steps, a "
-        "real-life example, and a quick check-question at the end. Use "
-        "Hinglish (Roman script) or English only, never Devanagari."
-    ),
+    )
 }
 
 LANGUAGE_RULE = (
@@ -92,15 +67,10 @@ def system_prompt(style: str, user_name: str) -> str:
     )
 
 def clean_output(text: str) -> str:
-    """Tumhari AI.py wali exact same cleaning logic"""
     text = re.sub(r"(?i)[^\n]*?Tip[^\n:]*?:\s*-?", "Tip :- ", text)
     text = text.replace("**", "").replace("*", "").replace("_", "")
     return text
 
-
-# ==========================================
-# WEB SERVER LOGIC
-# ==========================================
 class ChatRequest(BaseModel):
     message: str
     history: list = []
@@ -109,12 +79,11 @@ class ChatRequest(BaseModel):
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
-    # System prompt setup karo (default jarvis style)
     messages = [{"role": "system", "content": system_prompt(req.style, req.user_name)}]
     
-    # History add karo
+    # Ensure proper format for history
     for msg in req.history[-MAX_HISTORY:]:
-        messages.append({"role": msg["role"], "content": msg["content"]})
+        messages.append({"role": msg.get("role", "user"), "content": msg.get("content", "")})
         
     messages.append({"role": "user", "content": req.message})
 
@@ -139,14 +108,13 @@ async def chat(req: ChatRequest):
         if not reply:
             raise ValueError("empty reply")
             
-        # Tumhara exact clean_output function
         reply = clean_output(reply)
-        
         return {"reply": reply}
         
     except Exception as e:
-        print(f"Error: {e}")
-        return {"reply": "⚠️ Abhi thodi technical dikkat aa gayi. Kuch der baad try karo."}
+        print(f"REAL ERROR: {e}") 
+        # Ab error message frontend pe dikhega taaki pata chale exact issue kya hai
+        return {"reply": f"⚠️ API Error: {str(e)}"} 
 
 if __name__ == "__main__":
     import uvicorn

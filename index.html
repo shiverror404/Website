@@ -61,7 +61,6 @@
 
         #history-list { flex: 1; overflow-y: auto; padding: 0 15px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px;}
         
-        /* History Item Container to hold text and delete button */
         .history-item-container {
             display: flex; align-items: center; justify-content: space-between;
             background: #1a1a1a; border-radius: 8px; border: 1px solid transparent;
@@ -78,7 +77,6 @@
         }
         .history-item-container.active .history-item { color: #fff; }
 
-        /* Delete Button for History */
         .delete-chat-btn {
             background: transparent; border: none; color: #ff4d4d;
             padding: 10px; cursor: pointer; opacity: 0.5; transition: 0.2s;
@@ -142,7 +140,6 @@
         .message {
             max-width: 85%; padding: 14px 18px; border-radius: 16px;
             line-height: 1.5; font-size: 0.95rem; word-wrap: break-word; white-space: pre-wrap;
-            /* NAYA ANIMATION (Smooth Spring) */
             animation: messagePop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
             transform-origin: bottom;
             opacity: 0;
@@ -153,14 +150,14 @@
             background: linear-gradient(135deg, #0052d4, #4364f7, #6fb1fc);
             color: #fff; border-bottom-right-radius: 4px;
             box-shadow: 0 4px 15px rgba(0, 82, 212, 0.3);
-            transform-origin: bottom right; /* Animation is side se aaye */
+            transform-origin: bottom right;
         }
 
         .bot-message {
             align-self: flex-start; background: var(--bot-msg);
             border: 1px solid var(--border-color); border-bottom-left-radius: 4px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4); backdrop-filter: blur(5px);
-            transform-origin: bottom left; /* Animation is side se aaye */
+            transform-origin: bottom left;
         }
 
         .typing {
@@ -192,7 +189,6 @@
         #send-btn:active { transform: scale(0.9); }
         #send-btn:disabled { background: #555; box-shadow: none; cursor: not-allowed; }
 
-        /* --- NAYI ANIMATIONS --- */
         @keyframes messagePop {
             0% { opacity: 0; transform: scale(0.8) translateY(10px); }
             100% { opacity: 1; transform: scale(1) translateY(0); }
@@ -203,7 +199,6 @@
 </head>
 <body>
 
-    <!-- SIDEBAR -->
     <div id="sidebar">
         <div class="sidebar-header">
             <span>History</span>
@@ -214,7 +209,6 @@
     </div>
     <div id="overlay"></div>
 
-    <!-- MAIN CONTENT -->
     <header>
         <button id="menu-btn">☰</button>
         <img src="https://raw.githubusercontent.com/shiverror404/Website/main/file_00000000acdc82118e20363e93b6c517.png" alt="J" id="bot-logo">
@@ -273,22 +267,19 @@
             historyList.innerHTML = '';
             const sorted = [...allChats].sort((a, b) => b.id - a.id);
             sorted.forEach(chat => {
-                // Create container
                 const container = document.createElement('div');
                 container.className = `history-item-container ${chat.id === currentChatId ? 'active' : ''}`;
                 
-                // Chat title
                 const titleDiv = document.createElement('div');
                 titleDiv.className = 'history-item';
                 titleDiv.textContent = chat.title || "New Chat";
                 titleDiv.onclick = () => loadChat(chat.id);
 
-                // Delete button
                 const delBtn = document.createElement('button');
                 delBtn.className = 'delete-chat-btn';
                 delBtn.innerHTML = '🗑️';
                 delBtn.onclick = (e) => {
-                    e.stopPropagation(); // Don't trigger loadChat
+                    e.stopPropagation();
                     deleteChat(chat.id);
                 };
 
@@ -301,8 +292,6 @@
         function deleteChat(id) {
             if (confirm("Kya aap ye chat delete karna chahte hain?")) {
                 allChats = allChats.filter(c => c.id !== id);
-                
-                // If deleted chat was the current one, load another or create new
                 if (currentChatId === id) {
                     if (allChats.length > 0) {
                         currentChatId = allChats[allChats.length - 1].id;
@@ -361,7 +350,6 @@
             const typing = document.getElementById('typing-indicator');
             chatContainer.insertBefore(div, typing);
             
-            // Smooth scroll to bottom
             chatContainer.scrollTo({
                 top: chatContainer.scrollHeight,
                 behavior: 'smooth'
@@ -411,7 +399,11 @@
 
             try {
                 const chat = getCurrentChat();
-                const contextMessages = chat.messages.slice(0, -1).slice(-15);
+                // FIX: History ko exact format mein bhejna (role and content)
+                const historyPayload = chat.messages.slice(0, -1).map(m => ({
+                    role: m.role,
+                    content: m.content
+                }));
 
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 60000);
@@ -419,7 +411,10 @@
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text, history: contextMessages }),
+                    body: JSON.stringify({ 
+                        message: text, 
+                        history: historyPayload 
+                    }),
                     signal: controller.signal
                 });
                 
@@ -427,11 +422,16 @@
                 const data = await response.json();
                 
                 if(typing) typing.style.display = 'none';
-                addMessage(data.reply, 'bot');
+                
+                if(data.reply) {
+                    addMessage(data.reply, 'bot');
+                } else {
+                    addMessage("⚠️ Server error: " + JSON.stringify(data), 'bot');
+                }
 
             } catch (error) {
                 if(typing) typing.style.display = 'none';
-                addMessage("⚠️ Network error ya server so raha hai. Kuch der baad try karo.", 'bot');
+                addMessage("⚠️ Network error: " + error.message, 'bot');
             } finally {
                 sendBtn.disabled = false;
                 userInput.focus();
