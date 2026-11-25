@@ -13,7 +13,7 @@ log = logging.getLogger("jarvis")
 
 app = FastAPI()
 
-# CORS allow karo (chaho to "*" ki jagah apni website ka URL daal do)
+# CORS allow karo
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -21,23 +21,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# API key sirf environment variable se aayegi (Render > Environment > GROQ_API_KEY).
-# Key ko kabhi code mein mat likho.
+# API key sirf environment variable se aayegi
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 DEFAULT_STYLE = "dost"
-# Fast model by default. Slow reasoning model chahiye to Render mein MODEL=openai/gpt-oss-120b set karo.
-DEFAULT_MODEL = os.getenv("MODEL", "llama-3.3-70b-versatile")
+# Fast model by default (Error fix)
+DEFAULT_MODEL = os.getenv("MODEL", "llama-3.1-8b-instant")
+FALLBACK_MODEL = "llama3-8b-8192" # Agar pehla fail ho toh backup
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "600"))
-HISTORY_MESSAGES = 6      # sirf last 6 messages bhejo (fast + purane gyaan pe na atke)
-HISTORY_CHARS = 600       # har history message ki max length
-# Debug ke liye Render mein DEBUG=1 set karo: error mein Groq ka asli message dikhega. Kaam hone par hata dena.
+HISTORY_MESSAGES = 6
+HISTORY_CHARS = 600
+
 DEBUG = os.getenv("DEBUG", "0") == "1"
 
 BOT_NAME = "JARVIS"
 OWNER_NAME = "Shiv Tiwari"
 
+# ==========================================
+# TUMHARI PERSONALITY (BILKUL SAME HAI)
+# ==========================================
 STYLES = {
     "dost": (
         "You talk like a real close friend, not like a formal assistant. Your main rule is to "
@@ -104,7 +107,6 @@ TIP_FORMAT_RULE = (
     "- No stars or bold tags for the word Tip.\n"
 )
 
-
 def system_prompt(style: str, user_name: str) -> str:
     persona = STYLES.get(style, STYLES[DEFAULT_STYLE])
     return (
@@ -116,12 +118,10 @@ def system_prompt(style: str, user_name: str) -> str:
         f"{EXAMPLES}"
     )
 
-
 def clean_output(text: str) -> str:
     text = re.sub(r"(?i)[^\n]*?Tip[^\n:]*?:\s*-?", "Tip :- ", text)
     text = text.replace("**", "").replace("*", "").replace("_", "")
     return text
-
 
 class ChatRequest(BaseModel):
     message: str
@@ -129,34 +129,24 @@ class ChatRequest(BaseModel):
     style: str = "dost"
     user_name: str = ""
 
-
-# Ek hi connection baar-baar use hota hai (har request pe naya TLS handshake nahi)
 http = requests.Session()
 
-
-def call_groq(payload: dict) -> str:
+# Helper to call Groq
+def call_groq(payload: dict, model_name: str) -> str:
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    payload["model"] = model_name
     r = http.post(GROQ_URL, headers=headers, json=payload, timeout=30)
-    if r.status_code == 400 and "reasoning_effort" in payload:
-        # model ne reasoning_effort accept nahi kiya: uske bina dobara try
-        payload = {k: v for k, v in payload.items() if k != "reasoning_effort"}
-        r = http.post(GROQ_URL, headers=headers, json=payload, timeout=30)
     r.raise_for_status()
     return (r.json()["choices"][0]["message"].get("content") or "").strip()
-
 
 def fail(message: str, status: int = 502):
     return JSONResponse(status_code=status, content={"error": message})
 
-
 @app.get("/")
 @app.get("/health")
 def health():
-    # Website khulte hi isse server ko jagaya jaata hai (free hosting sleep se uthne ke liye)
     return {"status": "ok", "bot": BOT_NAME}
 
-
-# "def" (async nahi): FastAPI ise threadpool mein chalata hai, to ek slow request baaki sabko block nahi karti
 @app.post("/chat")
 def chat(req: ChatRequest):
     if not GROQ_API_KEY:
@@ -169,51 +159,48 @@ def chat(req: ChatRequest):
     for msg in req.history[-HISTORY_MESSAGES:]:
         if not isinstance(msg, dict):
             continue
+        # FIX: 'assistant' use kiya hai Groq ke liye
         role = "user" if msg.get("role") == "user" else "assistant"
         content = str(msg.get("content", ""))
 
-        # Purane "Tip :-" wale messages history se hata do (taaki wo dobara copy na kare)
+        # Purane "Tip :-" wale messages history se hata do
         if "Tip :-" in content:
             content = content.split("Tip :-")[0].strip()
 
         content = content.replace('"', "").replace("*", "").replace("_", "")
-        content = re.sub(r"[\x00-\x1f\x7f\u200b-\u200f\ufeff]+", " ", content)   # control / invisible chars
+        content = re.sub(r"[\x00-\x1f\x7f\u200b-\u200f\ufeff]+", " ", content)   
         content = re.sub(r"\s+", " ", content).strip()[:HISTORY_CHARS]
         if content:
             history.append({"role": role, "content": content})
 
-    while history and history[0]["role"] == "assistant":   # history hamesha user message se shuru ho
+    while history and history[0]["role"] == "assistant":  
         history.pop(0)
     messages.extend(history)
 
     messages.append({"role": "user", "content": req.message[:2000]})
 
     payload = {
-        "model": DEFAULT_MODEL,
         "messages": messages,
-        "temperature": 0.9,  # thoda creative aur casual
+        "temperature": 0.9,  
         "max_tokens": MAX_TOKENS,
     }
-    if "gpt-oss" in DEFAULT_MODEL:
-        payload["reasoning_effort"] = "low"  # sochne mein kam time = fast jawab
 
     try:
         try:
-            reply = call_groq(payload)
+            reply = call_groq(payload, DEFAULT_MODEL)
         except requests.exceptions.HTTPError as e:
             code = e.response.status_code if e.response is not None else 0
-            if code in (400, 413, 422) and len(messages) > 2:
-                # History mein kuch aisa tha jo Groq ko pasand nahi aaya: bina history ke dobara try
-                log.warning("Groq %s with history, retrying without history", code)
-                payload["messages"] = [messages[0], messages[-1]]
-                reply = call_groq(payload)
+            if code in (400, 413, 422, 429):
+                log.warning(f"Model {DEFAULT_MODEL} failed ({code}). Trying fallback...")
+                reply = call_groq(payload, FALLBACK_MODEL)
             else:
                 raise
+        
         if not reply:
             raise ValueError("empty reply")
         return {"reply": clean_output(reply)}
+    
     except requests.exceptions.Timeout:
-        log.warning("Groq timeout")
         return fail("Server ne time pe jawab nahi diya. Dobara try karo.")
     except requests.exceptions.HTTPError as e:
         resp = e.response
@@ -230,8 +217,6 @@ def chat(req: ChatRequest):
         log.error("Chat error: %s", e)
         return fail("Kuch gadbad ho gayi. Dobara try karo." + (f" Detail: {e}" if DEBUG else ""))
 
-
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8000")))

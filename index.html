@@ -86,7 +86,7 @@
   .app { display: grid; grid-template-columns: 300px minmax(0, 1fr); height: 100vh; height: 100dvh; overflow: hidden; }
   .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; }
 
-  /* ---------- avatar and ring (the one signature motif) ---------- */
+  /* ---------- avatar and ring ---------- */
   .avatar { position: relative; display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-2); color: var(--accent); font-weight: 700; overflow: hidden; flex: none; }
   .avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .avatar.lg { width: 76px; height: 76px; font-size: 1.8rem; }
@@ -145,10 +145,8 @@
   .column { display: flex; flex-direction: column; gap: 24px; max-width: 780px; margin: 0 auto; padding: 26px 16px 10px; min-height: 100%; }
   .thread { display: flex; flex-direction: column; gap: 24px; }
   .msg { display: flex; gap: 12px; min-width: 0; }
-  /* Sent message: springs up from the composer */
   .msg.enter.msg-user .bubble { transform-origin: 100% 100%; animation: sendIn .46s cubic-bezier(.2, .9, .25, 1.12) both; }
   @keyframes sendIn { from { opacity: 0; transform: translateY(28px) scale(.88); } to { opacity: 1; transform: none; } }
-  /* Received message: soft rise, avatar pops, words fade in one by one */
   .msg.enter.msg-bot { animation: botIn .42s cubic-bezier(.22, .8, .3, 1) both; }
   .msg.enter.msg-bot > .avatar { animation: pop .5s cubic-bezier(.2, .9, .25, 1.3) both; }
   @keyframes botIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
@@ -392,14 +390,14 @@
     clearTimeout(saveTimer);
     try { localStorage.setItem(STORE_KEY, JSON.stringify(allChats)); } catch (e) { /* storage full or blocked */ }
   }
-  function saveSoon() {   // used for plain new messages: write when the browser is idle, not during animations
+  function saveSoon() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       if ('requestIdleCallback' in window) requestIdleCallback(writeStore, { timeout: 2000 });
       else writeStore();
     }, 900);
   }
-  function persist() {    // used for structural changes (new, delete, clear)
+  function persist() {
     writeStore();
     renderHistoryList();
     updateHeader();
@@ -508,8 +506,6 @@
   }
 
   /* ================= rendering ================= */
-  // Reveal a reply without heavy work: short replies fade in a few words at a time,
-  // long replies fade in paragraph by paragraph. Only opacity/transform are animated.
   function revealBlocks(root) {
     const blocks = root.querySelectorAll(':scope > p, :scope > h4, :scope > ul > li, :scope > ol > li, .codeblock');
     if (!blocks.length) return 0;
@@ -528,7 +524,7 @@
     if (!total) return 0;
     if (total > 140) return revealBlocks(root);
 
-    const group = Math.max(1, Math.ceil(total / 45));      // never more than ~45 animated spans
+    const group = Math.max(1, Math.ceil(total / 45));
     const step = Math.min(0.05, 1.5 / Math.ceil(total / group));
     let i = 0;
     nodes.forEach((node) => {
@@ -624,7 +620,7 @@
     if (empty) {
       if (reduceMotion) empty.remove();
       else {
-        empty.classList.add('leaving');                 // let the welcome screen fade out first
+        empty.classList.add('leaving');
         await new Promise((r) => setTimeout(r, 170));
         empty.remove();
       }
@@ -632,7 +628,6 @@
     const el = buildMessage(msg, true);
     thread.appendChild(el);
     requestAnimationFrame(() => {
-      // A long reply starts at its first line instead of jumping to its end.
       if (msg.role !== 'user' && el.offsetHeight > messagesEl.clientHeight * 0.7) {
         const top = messagesEl.scrollTop + el.getBoundingClientRect().top - messagesEl.getBoundingClientRect().top - 14;
         messagesEl.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
@@ -740,7 +735,7 @@
   /* ================= chat actions ================= */
   function createNewChat() {
     const current = getChat();
-    if (current && current.messages.length === 0) { closeSidebar(); input.focus(); return; }  // reuse the empty chat
+    if (current && current.messages.length === 0) { closeSidebar(); input.focus(); return; }
     const chat = { id: Date.now().toString(), title: 'New Chat', messages: [] };
     allChats.push(chat);
     currentChatId = chat.id;
@@ -784,7 +779,7 @@
     chat.messages.push({ role, content });
     if (role === 'user' && chat.messages.length === 1) {
       chat.title = content.substring(0, 25) + (content.length > 25 ? '...' : '');
-      renderHistoryList();   // title changed
+      renderHistoryList();
       updateHeader();
     }
     saveSoon();
@@ -798,12 +793,12 @@
     sendBtn.disabled = busy || !input.value.trim();
   }
 
-  // The server expects history without quotes, stars, underscores or newlines (kept from the old version).
+  // FIX: 'assistant' use kiya hai Groq ke liye
   const sanitizeForServer = (m) => ({
-    role: m.role === 'user' ? 'user' : 'bot',
+    role: m.role === 'user' ? 'user' : 'assistant',
     content: String(m.content)
       .replace(/"/g, '').replace(/\*/g, '').replace(/_/g, '')
-      .replace(/[\u0000-\u001f\u007f\u200b-\u200f\ufeff]+/g, ' ')   // newlines, control and invisible characters
+      .replace(/[\u0000-\u001f\u007f\u200b-\u200f\ufeff]+/g, ' ')   
       .replace(/\s+/g, ' ').trim()
       .slice(0, 500)
   });
@@ -832,7 +827,7 @@
     clearError();
     updateTyping();
 
-    const history = chat.messages.slice(-7, -1).map(sanitizeForServer).filter(m => m.content);   // only the last 6 earlier messages
+    const history = chat.messages.slice(-7, -1).map(sanitizeForServer).filter(m => m.content);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     const hintId = setTimeout(() => { typingText.textContent = 'Server is waking up, this can take up to a minute…'; }, 8000);
@@ -937,7 +932,6 @@
   });
 
   /* ================= start ================= */
-  // Wake the (free-tier) server as soon as the page opens so the first reply is not slow.
   try { fetch(API_URL.replace(/\/chat$/, '/health'), { cache: 'no-store' }).catch(() => {}); } catch (e) {}
 
   [$('brand-avatar'), $('top-avatar')].forEach(slot => {
