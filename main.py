@@ -10,7 +10,7 @@ app = FastAPI()
 # CORS allow karo taaki website (Vercel) isse baat kar sake
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://jarvis-web-puce-seven.vercel.app"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -72,12 +72,17 @@ TIP_FORMAT_RULE = (
 )
 
 BOT_NAME = "JARVIS"
-OWNER_NAME = "SHIV"
+OWNER_NAME = "Shiv Tiwari"
 
 def system_prompt(style: str, user_name: str) -> str:
     persona = STYLES.get(style, STYLES[DEFAULT_STYLE])
     return (
         f"You are {BOT_NAME}, an AI assistant created by {OWNER_NAME}.\n"
+        f"IMPORTANT INFO ABOUT YOUR CREATOR:\n"
+        f"- Your owner's name is {OWNER_NAME}.\n"
+        f"- He is a brilliant 9th-grade student.\n"
+        f"- He built this entire AI bot and website while studying in Class 9th.\n"
+        f"- If anyone asks who made you or who your owner is, proudly tell them about {OWNER_NAME} and his Class 9th achievement.\n\n"
         f"{LANGUAGE_RULE}\n"
         f"{TIP_FORMAT_RULE}\n"
         "Keep answers concise unless asked for detail. If you don't know something, "
