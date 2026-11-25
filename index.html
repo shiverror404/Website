@@ -30,7 +30,7 @@
             overflow: hidden;
         }
 
-        /* --- SIDEBAR --- */
+        /* SIDEBAR */
         #sidebar {
             width: 280px;
             background-color: var(--sidebar-bg);
@@ -86,7 +86,7 @@
 
         #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 99; display: none; backdrop-filter: blur(2px); }
 
-        /* --- HEADER --- */
+        /* HEADER */
         header {
             padding: 15px 20px;
             background: var(--panel);
@@ -127,7 +127,7 @@
         }
         .clear-btn:hover { color: #fff; border-color: #fff; }
 
-        /* --- CHAT AREA --- */
+        /* CHAT AREA */
         #chat-container {
             flex: 1; overflow-y: auto; padding: 20px;
             display: flex; flex-direction: column; gap: 18px;
@@ -166,7 +166,7 @@
             text-shadow: 0 0 5px var(--accent-glow); animation: blink 1.5s infinite;
         }
 
-        /* --- INPUT AREA --- */
+        /* INPUT AREA */
         #input-area {
             padding: 15px 20px; background: var(--panel); backdrop-filter: blur(10px);
             border-top: 1px solid var(--border-color); display: flex; gap: 12px;
@@ -199,7 +199,6 @@
 </head>
 <body>
 
-    <!-- SIDEBAR -->
     <div id="sidebar">
         <div class="sidebar-header">
             <span>History</span>
@@ -210,7 +209,6 @@
     </div>
     <div id="overlay"></div>
 
-    <!-- MAIN CONTENT -->
     <header>
         <button id="menu-btn">☰</button>
         <img src="https://raw.githubusercontent.com/shiverror404/Website/main/file_00000000acdc82118e20363e93b6c517.png" alt="J" id="bot-logo">
@@ -402,11 +400,20 @@
             try {
                 const chat = getCurrentChat();
                 
-                // FIX: History ko saaf karke bhejo (taaki * aur _ ki wajah se error na aaye)
-                const historyPayload = chat.messages.slice(0, -1).map(m => ({
-                    role: m.role,
-                    content: String(m.content).replace(/\*/g, '').replace(/_/g, '') 
-                }));
+                // --- HISTORY FORMAT FIX (Removing Quotes, Stars, Newlines) ---
+                const historyPayload = chat.messages.slice(0, -1).map(m => {
+                    // String mein convert karo aur saare khatarnak characters hatao
+                    let safeContent = String(m.content)
+                        .replace(/"/g, '')  // Double quotes hatao
+                        .replace(/\*/g, '') // Stars hatao
+                        .replace(/_/g, '')  // Underscores hatao
+                        .replace(/\n/g, ' '); // Newlines ko space se replace karo
+                    
+                    return {
+                        role: m.role,
+                        content: safeContent
+                    };
+                });
 
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 60000);

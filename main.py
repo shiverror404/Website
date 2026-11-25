@@ -7,14 +7,15 @@ import re
 
 app = FastAPI()
 
+# CORS allow karo
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Safe side ke liye sabko allow kiya hai
+    allow_origins=["*"], # Safe side ke liye sabko allow kiya
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# APNI NAYI GROQ KEY YAHAN DAALO
+# TUMHARI API KEY YAHAN DAAL DI HAI
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -86,9 +87,12 @@ async def chat(req: ChatRequest):
     for msg in req.history[-MAX_HISTORY:]:
         role = "user" if msg.get("role") == "user" else "assistant"
         content = str(msg.get("content", ""))
-        # Extra safety: koi bhi markdown star history mein na jaye
-        content = content.replace("*", "").replace("_", "")
-        messages.append({"role": role, "content": content})
+        
+        # Ensure proper content without quotes or markdown
+        content = content.replace('"', '').replace('*', '').replace('_', '').replace('\n', ' ')
+        
+        if content.strip(): # Empty messages mat bhejo
+            messages.append({"role": role, "content": content})
         
     messages.append({"role": "user", "content": req.message})
 
