@@ -82,8 +82,10 @@ async def chat(req: ChatRequest):
     messages = [{"role": "system", "content": system_prompt(req.style, req.user_name)}]
     
     # Ensure proper format for history
-    for msg in req.history[-MAX_HISTORY:]:
-        messages.append({"role": msg.get("role", "user"), "content": msg.get("content", "")})
+for msg in req.history[-MAX_HISTORY:]:
+    role = "user" if msg.get("role") == "user" else "assistant"
+    content = str(msg.get("content", ""))
+    messages.append({"role": role, "content": content})
         
     messages.append({"role": "user", "content": req.message})
 
