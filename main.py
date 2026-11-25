@@ -7,7 +7,6 @@ import re
 
 app = FastAPI()
 
-# CORS allow karo
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
@@ -19,20 +18,21 @@ app.add_middleware(
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-DEFAULT_STYLE = "jarvis"
+DEFAULT_STYLE = "dost" # Ab default dost hai
 DEFAULT_MODEL = "openai/gpt-oss-120b"
 MAX_HISTORY = 20
 MAX_TOKENS = 1200
 
-# Naya Style: Ekdum Real Dost
 STYLES = {
-    "jarvis": (
-        "Talk like a real, close desi best friend. Be casual, funny, and natural. "
-        "Reply to what the user says directly (like a human would). "
-        "Use Hinglish (Roman script) or English depending on the user. NEVER use Devanagari. "
-        "Do not act like a robot. If the user says 'Hi' or 'Kya hal hai', reply like a friend "
-        "(e.g., 'Badhiya bhai, tu bata?', 'Sab mast, tu suna'). "
-        "Do NOT give a 'Tip' on every message. Only give a tip if the user specifically asks for advice or help with something."
+    "dost": (
+        "You are NOT an AI assistant. You are a real human best friend. "
+        "Your vibe is chill, funny, and you use lots of Gen-Z slang (bhai, bro, mast, vibe, etc). "
+        "NEVER say 'How can I assist you', 'I am here to help', or 'How may I help you'. "
+        "NEVER call the user 'sir'. Call them 'bhai', 'bro', or 'yaar'. "
+        "If they say 'Hi', reply like 'Kya haal bhai, kya scene hai?'. "
+        "If they ask 'Kya kar raha hai', reply like a human (e.g., 'Kuch nahi yaar, bas chill kar raha hu, tu bata'). "
+        "Keep replies very short and casual. Do not give advice unless they ask for it. "
+        "NEVER give a 'Tip' in a normal conversation. Only give a tip if they ask a direct question like 'How do I study?'."
     )
 }
 
@@ -43,13 +43,11 @@ LANGUAGE_RULE = (
     "- DO NOT USE ANY MARKDOWN (no *, **, _, ```). Plain text only.\n"
 )
 
-# Tip ka rule ab strict nahi hai, dost ki tarah baat karega
 TIP_FORMAT_RULE = (
-    "TIP FORMAT RULES (Strictly Optional):\n"
-    "- ONLY give a tip when it is actually useful for the conversation.\n"
-    "- If you give a tip, put it on a new line and start it with exactly: Tip :- \n"
-    "- Do not use any stars or bold tags for the word Tip. Just plain text.\n"
-    "- Do not give tips for simple greetings, small talk, or normal questions.\n"
+    "TIP FORMAT RULES:\n"
+    "- Only give a tip if the user asks for help or advice. Do not force tips.\n"
+    "- If you give a tip, start it on a new line with exactly: Tip :- \n"
+    "- No stars or bold tags for the word Tip.\n"
 )
 
 BOT_NAME = "JARVIS"
@@ -58,22 +56,14 @@ OWNER_NAME = "Shiv Tiwari"
 def system_prompt(style: str, user_name: str) -> str:
     persona = STYLES.get(style, STYLES[DEFAULT_STYLE])
     return (
-        f"You are {BOT_NAME}, an AI assistant created by {OWNER_NAME}.\n"
-        f"You are talking to your best friend, {user_name or 'user'}.\n" 
-        f"IMPORTANT INFO ABOUT YOUR CREATOR:\n"
-        f"- Your owner's name is {OWNER_NAME}.\n"
-        f"- He is a brilliant 9th-grade student.\n"
-        f"- He built this entire AI bot and website while studying in Class 9th.\n"
-        f"- If anyone asks who made you or who your owner is, proudly tell them about {OWNER_NAME} and his Class 9th achievement.\n\n"
+        f"You are {BOT_NAME}, created by {OWNER_NAME}.\n"
         f"{LANGUAGE_RULE}\n"
-        f"{TIP_FORMAT_RULE}\n"
-        "Keep answers concise unless asked for detail. If you don't know something, "
-        "say so instead of guessing. You cannot browse the web or control devices.\n\n"
+        f"{TIP_FORMAT_RULE}\n\n"
         f"Personality: {persona}"
     )
 
 def clean_output(text: str) -> str:
-    # Sirf tab Tip format fix karega jab actually Tip ho
+    # Agar model galti se Tip de bhi de, toh usko saaf karo
     text = re.sub(r"(?i)[^\n]*?Tip[^\n:]*?:\s*-?", "Tip :- ", text)
     text = text.replace("**", "").replace("*", "").replace("_", "")
     return text
@@ -81,22 +71,25 @@ def clean_output(text: str) -> str:
 class ChatRequest(BaseModel):
     message: str
     history: list = []
-    style: str = "jarvis"
+    style: str = "dost"
     user_name: str = ""
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
     messages = [{"role": "system", "content": system_prompt(req.style, req.user_name)}]
     
-    # History format fix karo
-    for msg in req.history[-MAX_HISTORY:]:
+    # Sirf last 6 messages bhejo taaki wo purane gyaan pe atke na
+    for msg in req.history[-6:]:
         role = "user" if msg.get("role") == "user" else "assistant"
         content = str(msg.get("content", ""))
         
-        # Ensure proper content without quotes or markdown
+        # Purane "Tip :-" wale messages history se hata do (taaki wo dobara copy na kare)
+        if "Tip :-" in content:
+            content = content.split("Tip :-")[0].strip()
+            
         content = content.replace('"', '').replace('*', '').replace('_', '').replace('\n', ' ')
         
-        if content.strip(): # Empty messages mat bhejo
+        if content.strip(): 
             messages.append({"role": role, "content": content})
         
     messages.append({"role": "user", "content": req.message})
@@ -109,7 +102,7 @@ async def chat(req: ChatRequest):
     payload = {
         "model": DEFAULT_MODEL,
         "messages": messages,
-        "temperature": 0.7,
+        "temperature": 0.9, # Temperature badhaya taaki thoda creative aur casual lage
         "max_tokens": MAX_TOKENS
     }
 
