@@ -10,12 +10,12 @@ app = FastAPI()
 # CORS allow karo
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Safe side ke liye sabko allow kiya
+    allow_origins=["*"], 
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# TUMHARI API KEY YAHAN DAAL DI HAI
+# TUMHARI API KEY YAHAN HAI
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -24,13 +24,15 @@ DEFAULT_MODEL = "openai/gpt-oss-120b"
 MAX_HISTORY = 20
 MAX_TOKENS = 1200
 
+# Naya Style: Ekdum Real Dost
 STYLES = {
     "jarvis": (
-        "Speak like a calm, razor-sharp, impeccably polite AI butler with dry, "
-        "understated wit. Address the user as 'sir' unless told otherwise. Use "
-        "natural Hinglish (Roman script) when they write Hindi/Hinglish, crisp "
-        "English otherwise. NEVER use Devanagari script. Give the answer first, "
-        "then one useful extra tip when relevant. No robotic filler."
+        "Talk like a real, close desi best friend. Be casual, funny, and natural. "
+        "Reply to what the user says directly (like a human would). "
+        "Use Hinglish (Roman script) or English depending on the user. NEVER use Devanagari. "
+        "Do not act like a robot. If the user says 'Hi' or 'Kya hal hai', reply like a friend "
+        "(e.g., 'Badhiya bhai, tu bata?', 'Sab mast, tu suna'). "
+        "Do NOT give a 'Tip' on every message. Only give a tip if the user specifically asks for advice or help with something."
     )
 }
 
@@ -41,11 +43,13 @@ LANGUAGE_RULE = (
     "- DO NOT USE ANY MARKDOWN (no *, **, _, ```). Plain text only.\n"
 )
 
+# Tip ka rule ab strict nahi hai, dost ki tarah baat karega
 TIP_FORMAT_RULE = (
-    "TIP FORMAT RULES:\n"
+    "TIP FORMAT RULES (Strictly Optional):\n"
+    "- ONLY give a tip when it is actually useful for the conversation.\n"
     "- If you give a tip, put it on a new line and start it with exactly: Tip :- \n"
     "- Do not use any stars or bold tags for the word Tip. Just plain text.\n"
-    "- Only ONE tip per reply.\n"
+    "- Do not give tips for simple greetings, small talk, or normal questions.\n"
 )
 
 BOT_NAME = "JARVIS"
@@ -55,6 +59,7 @@ def system_prompt(style: str, user_name: str) -> str:
     persona = STYLES.get(style, STYLES[DEFAULT_STYLE])
     return (
         f"You are {BOT_NAME}, an AI assistant created by {OWNER_NAME}.\n"
+        f"You are talking to your best friend, {user_name or 'user'}.\n" 
         f"IMPORTANT INFO ABOUT YOUR CREATOR:\n"
         f"- Your owner's name is {OWNER_NAME}.\n"
         f"- He is a brilliant 9th-grade student.\n"
@@ -63,12 +68,12 @@ def system_prompt(style: str, user_name: str) -> str:
         f"{LANGUAGE_RULE}\n"
         f"{TIP_FORMAT_RULE}\n"
         "Keep answers concise unless asked for detail. If you don't know something, "
-        "say so instead of guessing. You cannot browse the web or control devices.\n"
-        f"The user's first name is {user_name or 'unknown'}.\n\n"
+        "say so instead of guessing. You cannot browse the web or control devices.\n\n"
         f"Personality: {persona}"
     )
 
 def clean_output(text: str) -> str:
+    # Sirf tab Tip format fix karega jab actually Tip ho
     text = re.sub(r"(?i)[^\n]*?Tip[^\n:]*?:\s*-?", "Tip :- ", text)
     text = text.replace("**", "").replace("*", "").replace("_", "")
     return text
