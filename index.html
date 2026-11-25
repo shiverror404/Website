@@ -800,8 +800,12 @@
 
   // The server expects history without quotes, stars, underscores or newlines (kept from the old version).
   const sanitizeForServer = (m) => ({
-    role: m.role,
-    content: String(m.content).replace(/"/g, '').replace(/\*/g, '').replace(/_/g, '').replace(/\n/g, ' ')
+    role: m.role === 'user' ? 'user' : 'bot',
+    content: String(m.content)
+      .replace(/"/g, '').replace(/\*/g, '').replace(/_/g, '')
+      .replace(/[\u0000-\u001f\u007f\u200b-\u200f\ufeff]+/g, ' ')   // newlines, control and invisible characters
+      .replace(/\s+/g, ' ').trim()
+      .slice(0, 500)
   });
 
   async function sendMessage(textOverride) {
@@ -828,7 +832,7 @@
     clearError();
     updateTyping();
 
-    const history = chat.messages.slice(0, -1).map(sanitizeForServer);
+    const history = chat.messages.slice(-7, -1).map(sanitizeForServer).filter(m => m.content);   // only the last 6 earlier messages
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     const hintId = setTimeout(() => { typingText.textContent = 'Server is waking up, this can take up to a minute…'; }, 8000);

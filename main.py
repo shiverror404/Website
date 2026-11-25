@@ -32,6 +32,8 @@ DEFAULT_MODEL = os.getenv("MODEL", "llama-3.3-70b-versatile")
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "600"))
 HISTORY_MESSAGES = 6      # sirf last 6 messages bhejo (fast + purane gyaan pe na atke)
 HISTORY_CHARS = 600       # har history message ki max length
+# Debug ke liye Render mein DEBUG=1 set karo: error mein Groq ka asli message dikhega. Kaam hone par hata dena.
+DEBUG = os.getenv("DEBUG", "0") == "1"
 
 BOT_NAME = "JARVIS"
 OWNER_NAME = "Shiv Tiwari"
@@ -163,6 +165,7 @@ def chat(req: ChatRequest):
 
     messages = [{"role": "system", "content": system_prompt(req.style, req.user_name)}]
 
+    history = []
     for msg in req.history[-HISTORY_MESSAGES:]:
         if not isinstance(msg, dict):
             continue
@@ -173,9 +176,15 @@ def chat(req: ChatRequest):
         if "Tip :-" in content:
             content = content.split("Tip :-")[0].strip()
 
-        content = content.replace('"', "").replace("*", "").replace("_", "").replace("\n", " ")[:HISTORY_CHARS]
-        if content.strip():
-            messages.append({"role": role, "content": content})
+        content = content.replace('"', "").replace("*", "").replace("_", "")
+        content = re.sub(r"[\x00-\x1f\x7f\u200b-\u200f\ufeff]+", " ", content)   # control / invisible chars
+        content = re.sub(r"\s+", " ", content).strip()[:HISTORY_CHARS]
+        if content:
+            history.append({"role": role, "content": content})
+
+    while history and history[0]["role"] == "assistant":   # history hamesha user message se shuru ho
+        history.pop(0)
+    messages.extend(history)
 
     messages.append({"role": "user", "content": req.message[:2000]})
 
@@ -189,7 +198,17 @@ def chat(req: ChatRequest):
         payload["reasoning_effort"] = "low"  # sochne mein kam time = fast jawab
 
     try:
-        reply = call_groq(payload)
+        try:
+            reply = call_groq(payload)
+        except requests.exceptions.HTTPError as e:
+            code = e.response.status_code if e.response is not None else 0
+            if code in (400, 413, 422) and len(messages) > 2:
+                # History mein kuch aisa tha jo Groq ko pasand nahi aaya: bina history ke dobara try
+                log.warning("Groq %s with history, retrying without history", code)
+                payload["messages"] = [messages[0], messages[-1]]
+                reply = call_groq(payload)
+            else:
+                raise
         if not reply:
             raise ValueError("empty reply")
         return {"reply": clean_output(reply)}
@@ -197,14 +216,19 @@ def chat(req: ChatRequest):
         log.warning("Groq timeout")
         return fail("Server ne time pe jawab nahi diya. Dobara try karo.")
     except requests.exceptions.HTTPError as e:
-        code = e.response.status_code if e.response is not None else 0
-        log.error("Groq HTTP %s: %s", code, e.response.text[:300] if e.response is not None else e)
+        resp = e.response
+        code = resp.status_code if resp is not None else 0
+        body = resp.text[:300] if resp is not None else str(e)
+        log.error("Groq HTTP %s: %s", code, body)
         if code == 429:
             return fail("Abhi bahut rush hai bhai, 10 second baad try karo.", 429)
-        return fail("AI server se jawab nahi aaya. Thodi der baad try karo.")
+        msg = f"AI server se jawab nahi aaya (code {code}). Thodi der baad try karo."
+        if DEBUG:
+            msg += f" Detail: {body}"
+        return fail(msg)
     except Exception as e:
         log.error("Chat error: %s", e)
-        return fail("Kuch gadbad ho gayi. Dobara try karo.")
+        return fail("Kuch gadbad ho gayi. Dobara try karo." + (f" Detail: {e}" if DEBUG else ""))
 
 
 if __name__ == "__main__":
