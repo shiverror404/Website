@@ -15,7 +15,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script>
-  /* Apply saved theme before first paint to avoid a flash. */
   (function () {
     try {
       var t = localStorage.getItem('jarvis_theme');
@@ -82,11 +81,9 @@
   .ic { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-  /* ---------- layout ---------- */
   .app { display: grid; grid-template-columns: 300px minmax(0, 1fr); height: 100vh; height: 100dvh; overflow: hidden; }
   .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; }
 
-  /* ---------- avatar and ring ---------- */
   .avatar { position: relative; display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-2); color: var(--accent); font-weight: 700; overflow: hidden; flex: none; }
   .avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .avatar.lg { width: 76px; height: 76px; font-size: 1.8rem; }
@@ -103,7 +100,6 @@
   .orb.mini::before { animation-duration: 1.4s; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ---------- sidebar ---------- */
   .sidebar { display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-right: 1px solid var(--line); padding: 14px 12px 12px; gap: 12px; }
   .side-top { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.01em; }
@@ -129,7 +125,6 @@
   .side-foot { padding: 4px 8px 0; font-size: 0.78rem; color: var(--muted); }
   .scrim { display: none; }
 
-  /* ---------- header ---------- */
   .topbar { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 6px 12px; padding-top: calc(6px + env(safe-area-inset-top)); background: var(--bg); border-bottom: 1px solid var(--line); z-index: 5; }
   .icon-btn { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; color: var(--muted); transition: background .15s, color .15s; }
   .icon-btn:hover { background: var(--surface-2); color: var(--text); }
@@ -140,7 +135,6 @@
   .text-btn:disabled { opacity: 0.4; cursor: default; }
   #menu-btn { display: none; }
 
-  /* ---------- messages ---------- */
   .messages { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
   .column { display: flex; flex-direction: column; gap: 24px; max-width: 780px; margin: 0 auto; padding: 26px 16px 10px; min-height: 100%; }
   .thread { display: flex; flex-direction: column; gap: 24px; }
@@ -194,7 +188,6 @@
   .error-card button { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); font-size: 0.9rem; }
   .error-card button:hover { border-color: var(--accent); }
 
-  /* ---------- empty state ---------- */
   .empty { margin: auto; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; padding: 24px 0; }
   .empty h2 { max-width: 20ch; font-size: clamp(1.45rem, 4.4vw, 1.95rem); line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; }
   .empty p { color: var(--muted); }
@@ -202,7 +195,6 @@
   .prompt { text-align: left; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); font-size: 0.92rem; line-height: 1.4; transition: border-color .15s, background .15s; }
   .prompt:hover { border-color: var(--accent); background: var(--surface-2); }
 
-  /* ---------- composer ---------- */
   .composer { padding: 8px 16px calc(12px + env(safe-area-inset-bottom)); position: relative; }
   .composer-inner { max-width: 780px; margin: 0 auto; }
   .field { display: flex; align-items: flex-end; gap: 8px; padding: 7px 7px 7px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; transition: border-color .15s, box-shadow .15s; }
@@ -219,7 +211,6 @@
   .jump { position: absolute; right: 18px; top: -50px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); color: var(--text); }
   .jump:hover { border-color: var(--accent); }
 
-  /* ---------- dialog and toast ---------- */
   dialog { margin: auto; width: min(92vw, 380px); padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
   dialog::backdrop { background: rgba(3, 8, 16, 0.6); backdrop-filter: blur(2px); }
   dialog h3 { font-size: 1.05rem; margin-bottom: 6px; }
@@ -235,7 +226,6 @@
   ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
 
-  /* ---------- small screens ---------- */
   @media (max-width: 899px) {
     .app { grid-template-columns: minmax(0, 1fr); }
     .sidebar { position: fixed; top: 0; bottom: 0; left: 0; width: min(86vw, 320px); z-index: 40; padding-top: calc(14px + env(safe-area-inset-top)); transform: translateX(-102%); transition: transform .28s cubic-bezier(.2, .8, .2, 1); }
@@ -345,10 +335,9 @@
 (() => {
   'use strict';
 
-  /* ================= config ================= */
   const API_URL   = "https://website-1wy5.onrender.com/chat";
   const LOGO_URL  = "https://raw.githubusercontent.com/shiverror404/Website/main/file_00000000acdc82118e20363e93b6c517.png";
-  const STORE_KEY = 'jarvis_multi_chats';   // same key and shape as before: existing chats keep working
+  const STORE_KEY = 'jarvis_multi_chats';   
   const THEME_KEY = 'jarvis_theme';
   const GREETING  = "Namaste, sir. Main JARVIS hoon. Aaj main aapki kya madad kar sakta hoon?";
   const REQUEST_TIMEOUT_MS = 60000;
@@ -359,7 +348,6 @@
     "Mere liye 3 din ka beginner workout plan banao"
   ];
 
-  /* ================= elements ================= */
   const $ = (id) => document.getElementById(id);
   const app = $('app'), sidebar = $('sidebar'), overlay = $('overlay');
   const menuBtn = $('menu-btn'), closeSidebarBtn = $('close-sidebar');
@@ -372,7 +360,6 @@
   const desktopMQ = window.matchMedia('(min-width: 900px)');
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* ================= state ================= */
   let allChats = loadChats();
   let currentChatId = null;
   let busy = false;
@@ -388,7 +375,7 @@
   let saveTimer = null;
   function writeStore() {
     clearTimeout(saveTimer);
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(allChats)); } catch (e) { /* storage full or blocked */ }
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(allChats)); } catch (e) { }
   }
   function saveSoon() {
     clearTimeout(saveTimer);
@@ -406,7 +393,6 @@
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') writeStore(); });
   const getChat = (id = currentChatId) => allChats.find(c => c.id === id);
 
-  /* ================= small helpers ================= */
   const icon = (name) => `<svg class="ic" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 
   function makeAvatar(extra = '') {
@@ -459,7 +445,6 @@
     });
   }
 
-  /* ================= safe mini-markdown ================= */
   const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
   function inlineFormat(s) {
@@ -505,7 +490,6 @@
     return out;
   }
 
-  /* ================= rendering ================= */
   function revealBlocks(root) {
     const blocks = root.querySelectorAll(':scope > p, :scope > h4, :scope > ul > li, :scope > ol > li, .codeblock');
     if (!blocks.length) return 0;
@@ -661,7 +645,6 @@
   }, { passive: true });
   jumpBtn.addEventListener('click', () => scrollToBottom(true));
 
-  /* ---------- errors ---------- */
   let retryAction = null;
   function clearError() { errorSlot.replaceChildren(); retryAction = null; }
   function showError(title, detail, onRetry) {
@@ -683,7 +666,6 @@
     scrollToBottom(true);
   }
 
-  /* ---------- sidebar list ---------- */
   function dayLabel(id) {
     const d = new Date(Number(id));
     if (isNaN(d)) return 'Earlier';
@@ -732,7 +714,6 @@
   }
   searchEl.addEventListener('input', renderHistoryList);
 
-  /* ================= chat actions ================= */
   function createNewChat() {
     const current = getChat();
     if (current && current.messages.length === 0) { closeSidebar(); input.focus(); return; }
@@ -786,14 +767,13 @@
     return true;
   }
 
-  /* ================= sending ================= */
   function autosize() {
     input.style.height = 'auto';
     input.style.height = Math.min(input.scrollHeight, 160) + 'px';
     sendBtn.disabled = busy || !input.value.trim();
   }
 
-  // FIX: 'assistant' use kiya hai Groq ke liye
+  // FIX: Assistant use kiya hai
   const sanitizeForServer = (m) => ({
     role: m.role === 'user' ? 'user' : 'assistant',
     content: String(m.content)
@@ -841,8 +821,8 @@
         signal: controller.signal
       });
       let data = null;
-      try { data = await response.json(); } catch (e) { /* not JSON */ }
-
+      try { data = await response.json(); } catch (e) { }
+      
       if (data && data.reply) {
         pushMessage(chatId, 'bot', String(data.reply));
         if (chatId === currentChatId) appendMessage({ role: 'bot', content: String(data.reply) });
@@ -868,7 +848,6 @@
     }
   }
 
-  /* ================= events ================= */
   input.addEventListener('input', autosize);
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendMessage(); }
@@ -898,7 +877,6 @@
     if (e.target.closest('[data-retry]') && retryAction) retryAction();
   });
 
-  /* ---------- sidebar (drawer on small screens, fixed on desktop) ---------- */
   function syncSidebarA11y() {
     const hidden = !desktopMQ.matches && !app.classList.contains('sidebar-open');
     if ('inert' in sidebar) sidebar.inert = hidden;
@@ -918,7 +896,6 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && app.classList.contains('sidebar-open')) closeSidebar(); });
   desktopMQ.addEventListener('change', () => { app.classList.remove('sidebar-open'); syncSidebarA11y(); });
 
-  /* ---------- theme ---------- */
   function applyTheme(t) {
     document.documentElement.setAttribute('data-theme', t);
     $('meta-theme').setAttribute('content', t === 'light' ? '#f3f6fb' : '#0a111d');
@@ -931,7 +908,6 @@
     applyTheme(next);
   });
 
-  /* ================= start ================= */
   try { fetch(API_URL.replace(/\/chat$/, '/health'), { cache: 'no-store' }).catch(() => {}); } catch (e) {}
 
   [$('brand-avatar'), $('top-avatar')].forEach(slot => {
