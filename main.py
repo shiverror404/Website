@@ -9,11 +9,12 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://jarvis-web-puce-seven.vercel.app"],
+    allow_origins=["*"], # Safe side ke liye sabko allow kiya hai
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# APNI NAYI GROQ KEY YAHAN DAALO
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -81,11 +82,13 @@ class ChatRequest(BaseModel):
 async def chat(req: ChatRequest):
     messages = [{"role": "system", "content": system_prompt(req.style, req.user_name)}]
     
-    # Ensure proper format for history
-for msg in req.history[-MAX_HISTORY:]:
-    role = "user" if msg.get("role") == "user" else "assistant"
-    content = str(msg.get("content", ""))
-    messages.append({"role": role, "content": content})
+    # History format fix karo
+    for msg in req.history[-MAX_HISTORY:]:
+        role = "user" if msg.get("role") == "user" else "assistant"
+        content = str(msg.get("content", ""))
+        # Extra safety: koi bhi markdown star history mein na jaye
+        content = content.replace("*", "").replace("_", "")
+        messages.append({"role": role, "content": content})
         
     messages.append({"role": "user", "content": req.message})
 
@@ -115,7 +118,6 @@ for msg in req.history[-MAX_HISTORY:]:
         
     except Exception as e:
         print(f"REAL ERROR: {e}") 
-        # Ab error message frontend pe dikhega taaki pata chale exact issue kya hai
         return {"reply": f"⚠️ API Error: {str(e)}"} 
 
 if __name__ == "__main__":

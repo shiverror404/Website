@@ -199,6 +199,7 @@
 </head>
 <body>
 
+    <!-- SIDEBAR -->
     <div id="sidebar">
         <div class="sidebar-header">
             <span>History</span>
@@ -209,6 +210,7 @@
     </div>
     <div id="overlay"></div>
 
+    <!-- MAIN CONTENT -->
     <header>
         <button id="menu-btn">☰</button>
         <img src="https://raw.githubusercontent.com/shiverror404/Website/main/file_00000000acdc82118e20363e93b6c517.png" alt="J" id="bot-logo">
@@ -399,13 +401,11 @@
 
             try {
                 const chat = getCurrentChat();
-                // FIX: History ko exact format mein bhejna (role and content)
-                // Pichli history ko saaf karke bhejo (taaki Groq ko koi dikkat na ho)
-const historyPayload = chat.messages.slice(0, -1).map(m => ({
-    role: m.role,
-    // Har message se * aur _ hata do taaki 400 error na aaye
-    content: String(m.content).replace(/\*/g, '').replace(/_/g, '') 
-}));
+                
+                // FIX: History ko saaf karke bhejo (taaki * aur _ ki wajah se error na aaye)
+                const historyPayload = chat.messages.slice(0, -1).map(m => ({
+                    role: m.role,
+                    content: String(m.content).replace(/\*/g, '').replace(/_/g, '') 
                 }));
 
                 const controller = new AbortController();
