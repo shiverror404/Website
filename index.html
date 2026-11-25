@@ -341,12 +341,31 @@
   const THEME_KEY = 'jarvis_theme';
   const GREETING  = "Namaste, sir. Main JARVIS hoon. Aaj main aapki kya madad kar sakta hoon?";
   const REQUEST_TIMEOUT_MS = 60000;
-  const PROMPTS = [
-    "Ek simple Python script likho jo folder ki files rename kare",
-    "Kal ki meeting ke liye ek chhota professional email draft karo",
-    "Quantum computing ko aasan bhasha mein samjhao",
-    "Mere liye 3 din ka beginner workout plan banao"
-  ];
+  // Suggestions ka pool (har baar naye wale uthayega)
+const ALL_PROMPTS = [
+  "Ek simple Python script likho jo folder ki files rename kare",
+  "Kal ki meeting ke liye ek chhota professional email draft karo",
+  "Quantum computing ko aasan bhasha mein samjhao",
+  "Mere liye 3 din ka beginner workout plan banao",
+  "Bhai mujhe ek funny joke sunao",
+  "Batao ki AI kaam kaise karta hai?",
+  "Mera din kharab ja raha hai, kuch motivation do",
+  "Mujhe HTML aur CSS ka basic structure sikhao",
+  "Ek acchi si short story likho",
+  "Duniya ka sabse ajeeb fact batao",
+  "Mujhe aaj raat ka dinner suggest karo",
+  "Ek 10th class ke student ke liye best study timetable banao",
+  "How to improve focus and concentration?",
+  "Mujhe ek naya English word sikhao",
+  "Batao space mein kya hota hai?",
+  "Mere liye ek acchi si shayari likho"
+];
+
+// Har baar 4 random naye suggestions uthayega
+function getRandomPrompts(count = 4) {
+  const shuffled = [...ALL_PROMPTS].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
+}
 
   const $ = (id) => document.getElementById(id);
   const app = $('app'), sidebar = $('sidebar'), overlay = $('overlay');
