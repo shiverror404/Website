@@ -14,6 +14,7 @@
             --user-msg: #004e92;
             --bot-msg: rgba(30, 30, 40, 0.9);
             --border-color: rgba(0, 210, 255, 0.2);
+            --sidebar-bg: #111;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
@@ -29,6 +30,45 @@
             overflow: hidden;
         }
 
+        /* Sidebar (History Menu) */
+        #sidebar {
+            width: 280px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            position: absolute;
+            top: 0; bottom: 0; left: -280px;
+            z-index: 100;
+            transition: left 0.3s ease-in-out;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+        }
+        #sidebar.open { left: 0; }
+
+        .sidebar-header {
+            padding: 15px; border-bottom: 1px solid #333;
+            display: flex; justify-content: space-between; align-items: center;
+            color: #fff; font-weight: bold;
+        }
+        #close-sidebar { background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer; }
+
+        .new-chat-btn {
+            background: var(--accent); color: #000; border: none; padding: 12px;
+            border-radius: 8px; cursor: pointer; font-weight: bold; width: calc(100% - 30px);
+            margin: 15px; box-shadow: 0 0 10px var(--accent-glow); transition: 0.2s;
+        }
+        .new-chat-btn:active { transform: scale(0.98); }
+
+        #history-list { flex: 1; overflow-y: auto; padding: 0 15px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px;}
+        .history-item {
+            padding: 12px; background: #1a1a1a; border-radius: 8px; cursor: pointer;
+            font-size: 0.9rem; color: #bbb; white-space: nowrap; overflow: hidden;
+            text-overflow: ellipsis; border: 1px solid transparent; transition: 0.2s;
+        }
+        .history-item:hover, .history-item.active { border-color: var(--accent); color: #fff; background: #2a2a2a; }
+
+        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 99; display: none; backdrop-filter: blur(2px); }
+
         /* Header */
         header {
             padding: 15px 20px;
@@ -41,9 +81,22 @@
             gap: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
             z-index: 10;
+            position: relative;
         }
 
-        /* Logo Style */
+        /* Menu Button (Left Side) */
+        #menu-btn {
+            position: absolute;
+            left: 15px;
+            background: none;
+            border: none;
+            color: var(--accent);
+            font-size: 1.5rem;
+            cursor: pointer;
+            text-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        /* Logo Style (Same as old) */
         header img {
             width: 40px;
             height: 40px;
@@ -60,6 +113,15 @@
             letter-spacing: 2px;
             color: #fff;
             text-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        /* Clear Button (Right Side - Same as old) */
+        .clear-btn {
+            position: absolute; top: 20px; right: 15px;
+            background: transparent; color: #888;
+            border: 1px solid #444; padding: 5px 10px;
+            border-radius: 15px; font-size: 0.7rem;
+            cursor: pointer; z-index: 20;
         }
 
         /* Chat Area */
@@ -172,17 +234,27 @@
 </head>
 <body>
 
+    <!-- Sidebar -->
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <span>History</span>
+            <button id="close-sidebar">✖</button>
+        </div>
+        <button class="new-chat-btn" id="new-chat-btn">+ New Chat</button>
+        <div id="history-list"></div>
+    </div>
+    <div id="overlay"></div>
+
+    <!-- Main Content -->
     <header>
-        <!-- APNE LOGO KA LINK YAHAN DAALNA HAI -->
-<img src="https://raw.githubusercontent.com/shiverror404/Website/main/file_00000000acdc82118e20363e93b6c517.png" alt="J" id="bot-logo">
+        <button id="menu-btn">☰</button>
+        <img src="https://raw.githubusercontent.com/shiverror404/Website/main/file_00000000acdc82118e20363e93b6c517.png" alt="J" id="bot-logo">
         <h1>JARVIS AI</h1>
     </header>
 
-    <!-- History clear karne ka button (Optional, par useful hai) -->
-    <button onclick="clearHistory()" style="position: absolute; top: 18px; right: 15px; background: transparent; color: #888; border: 1px solid #444; padding: 5px 10px; border-radius: 15px; font-size: 0.7rem; cursor: pointer; z-index: 20;">Clear</button>
+    <button class="clear-btn" onclick="clearCurrentChat()">Clear</button>
 
     <div id="chat-container">
-        <!-- Messages yahan JS se load honge -->
         <div class="typing" id="typing-indicator">JARVIS is typing...</div>
     </div>
 
@@ -198,74 +270,129 @@
         const userInput = document.getElementById('user-input');
         const sendBtn = document.getElementById('send-btn');
         const typingIndicator = document.getElementById('typing-indicator');
+        
+        // Sidebar Elements
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        const menuBtn = document.getElementById('menu-btn');
+        const closeSidebarBtn = document.getElementById('close-sidebar');
+        const historyList = document.getElementById('history-list');
+        const newChatBtn = document.getElementById('new-chat-btn');
 
-        // LocalStorage se history load karo
-        let chatHistory = JSON.parse(localStorage.getItem('jarvisHistory')) || [];
+        // All Chats Data
+        let allChats = JSON.parse(localStorage.getItem('jarvis_multi_chats')) || [];
+        let currentChatId = null;
 
-        // Page load hote hi purane messages render karo
-        function loadHistory() {
-            // Purane messages hatao (typing indicator chhod ke)
-            const messages = chatContainer.querySelectorAll('.message');
-            messages.forEach(msg => msg.remove());
-
-            chatHistory.forEach(msg => {
-                const div = document.createElement('div');
-                div.classList.add('message', msg.role === 'user' ? 'user-message' : 'bot-message');
-                div.textContent = msg.content;
-                chatContainer.insertBefore(div, typingIndicator);
-            });
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+        // Initialize
+        if (allChats.length === 0) {
+            createNewChat();
+        } else {
+            currentChatId = allChats[allChats.length - 1].id; // Load latest
+            loadChat(currentChatId);
         }
 
-        // Initial welcome message agar history khaali hai
-        function showWelcome() {
-            if (chatHistory.length === 0) {
+        // Sidebar Logic
+        menuBtn.onclick = () => { sidebar.classList.add('open'); overlay.style.display = 'block'; };
+        function closeSidebar() { sidebar.classList.remove('open'); overlay.style.display = 'none'; }
+        closeSidebarBtn.onclick = closeSidebar;
+        overlay.onclick = closeSidebar;
+
+        function saveToLocal() {
+            localStorage.setItem('jarvis_multi_chats', JSON.stringify(allChats));
+            renderHistoryList();
+        }
+
+        function renderHistoryList() {
+            historyList.innerHTML = '';
+            const sorted = [...allChats].sort((a, b) => b.id - a.id);
+            sorted.forEach(chat => {
                 const div = document.createElement('div');
-                div.classList.add('message', 'bot-message');
-                div.textContent = "Namaste, sir. Main JARVIS hoon. Aaj main aapki kya madad kar sakta hoon?";
-                chatContainer.insertBefore(div, typingIndicator);
+                div.className = `history-item ${chat.id === currentChatId ? 'active' : ''}`;
+                div.textContent = chat.title || "New Chat";
+                div.onclick = () => loadChat(chat.id);
+                historyList.appendChild(div);
+            });
+        }
+
+        function getCurrentChat() {
+            return allChats.find(c => c.id === currentChatId);
+        }
+
+        function createNewChat() {
+            const newChat = {
+                id: Date.now().toString(),
+                title: "New Chat",
+                messages: []
+            };
+            allChats.push(newChat);
+            currentChatId = newChat.id;
+            saveToLocal();
+            
+            chatContainer.innerHTML = '<div class="typing" id="typing-indicator">JARVIS is typing...</div>';
+            const typing = document.getElementById('typing-indicator');
+            if(typing) typing.style.display = 'none';
+            addMessage("Namaste, sir. Main JARVIS hoon. Aaj main aapki kya madad kar sakta hoon?", 'bot', false);
+            closeSidebar();
+        }
+
+        function loadChat(id) {
+            currentChatId = id;
+            const chat = getCurrentChat();
+            
+            chatContainer.innerHTML = '<div class="typing" id="typing-indicator">JARVIS is typing...</div>';
+            
+            if (chat.messages.length === 0) {
+                addMessage("Namaste, sir. Main JARVIS hoon. Aaj main aapki kya madad kar sakta hoon?", 'bot', false);
+            } else {
+                chat.messages.forEach(msg => {
+                    addMessage(msg.content, msg.role, false);
+                });
+            }
+            renderHistoryList();
+            closeSidebar();
+        }
+
+        function addMessage(text, role, save = true) {
+            const div = document.createElement('div');
+            div.classList.add('message', role === 'user' ? 'user-message' : 'bot-message');
+            div.textContent = text;
+            chatContainer.insertBefore(div, typingIndicator);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            if (save) {
+                const chat = getCurrentChat();
+                chat.messages.push({ role, content: text });
+                
+                if (role === 'user' && chat.messages.length === 1) {
+                    chat.title = text.substring(0, 25) + (text.length > 25 ? "..." : "");
+                }
+                saveToLocal();
             }
         }
 
-        loadHistory();
-        showWelcome();
+        function clearCurrentChat() {
+            if (confirm("Kya aap is chat ko clear karna chahte hain?")) {
+                const chat = getCurrentChat();
+                chat.messages = [];
+                chat.title = "New Chat";
+                saveToLocal();
+                loadChat(currentChatId);
+            }
+        }
+
+        newChatBtn.onclick = createNewChat;
 
         userInput.addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
         });
 
-        function addMessage(text, sender) {
-            const div = document.createElement('div');
-            div.classList.add('message', sender === 'user' ? 'user-message' : 'bot-message');
-            div.textContent = text;
-            chatContainer.insertBefore(div, typingIndicator);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-
-        function saveHistory() {
-            // Sirf last 50 messages save karo taaki browser slow na ho
-            if (chatHistory.length > 50) chatHistory = chatHistory.slice(-50);
-            localStorage.setItem('jarvisHistory', JSON.stringify(chatHistory));
-        }
-
-        function clearHistory() {
-            if (confirm("Kya aap sach mein chat history delete karna chahte hain?")) {
-                chatHistory = [];
-                localStorage.removeItem('jarvisHistory');
-                loadHistory();
-                showWelcome();
-            }
-        }
-
         async function sendMessage() {
             const text = userInput.value.trim();
             if (!text) return;
 
             addMessage(text, 'user');
-            chatHistory.push({ role: "user", content: text }); // LocalStorage ke liye
-            saveHistory();
-
+            
             userInput.value = '';
             userInput.style.height = 'auto';
             sendBtn.disabled = true;
@@ -274,14 +401,16 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
             try {
+                const chat = getCurrentChat();
+                const contextMessages = chat.messages.slice(0, -1).slice(-15); // Send max 15 messages for context
+
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-                // API ko bhejte waqt pichli history bhi bhejte hain
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text, history: chatHistory.slice(0, -1) }), // Last message user ka hi hai
+                    body: JSON.stringify({ message: text, history: contextMessages }),
                     signal: controller.signal
                 });
                 
@@ -290,9 +419,6 @@
                 
                 typingIndicator.style.display = 'none';
                 addMessage(data.reply, 'bot');
-                
-                chatHistory.push({ role: "assistant", content: data.reply });
-                saveHistory();
 
             } catch (error) {
                 typingIndicator.style.display = 'none';
@@ -312,4 +438,4 @@
         });
     </script>
 </body>
-</html>
+    </html>
