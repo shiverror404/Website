@@ -27,7 +27,7 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 DEFAULT_STYLE = "dost"
 # Fast model fix (Pehle wala 404 de raha tha)
-DEFAULT_MODEL = os.getenv("MODEL", "llama-3.1-8b-instant")
+DEFAULT_MODEL = os.getenv("MODEL", "openai/gpt-oss-120b")
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "600"))
 HISTORY_MESSAGES = 6
 HISTORY_CHARS = 600
