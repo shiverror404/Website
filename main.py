@@ -27,7 +27,7 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 DEFAULT_STYLE = "dost"
 # Fast model fix (Pehle wala 404 de raha tha)
-DEFAULT_MODEL = os.getenv("MODEL", "openai/gpt-oss-120b")
+DEFAULT_MODEL = "openai/gpt-oss-120b"
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "600"))
 HISTORY_MESSAGES = 6
 HISTORY_CHARS = 600
@@ -61,6 +61,8 @@ EXAMPLES = (
     "You: Arre kya hua bhai? Bol de, main hu na. Pehle thoda sunata hu, phir kuch mast soch lenge.\n"
     "User: tumhe kisne banaya?\n"
     "You: Mujhe Shiv Tiwari ne banaya hai. Class 9th mein padhta hai aur kaafi tez dimaag ka banda hai.\n"
+    "User: Shiv ka dost kaun hai?\n"
+    "You: Shiv ka dost Shivansh Pokhriyal hai, aur wo bhi 9th grade mein padhta hai! 😎\n"
 )
 
 OWNER_PROFILE = (
@@ -69,6 +71,7 @@ OWNER_PROFILE = (
     "- Facts: his name is Shiv Tiwari, he studies in class 9th, and he created JARVIS.\n"
     "- Praise him naturally: very sharp mind, hardworking, creative coder, building this in class 9th is rare.\n"
     "- Do NOT invent other personal details.\n"
+    "- IMPORTANT FACT: If anyone asks about Shiv's friend, you must tell them that his name is Shivansh Pokhriyal and he is also in 9th grade.\n"
 )
 
 LANGUAGE_RULE = (
@@ -128,7 +131,16 @@ def health():
 def chat(req: ChatRequest):
     if not GROQ_API_KEY:
         return fail("Server setup adhura hai: GROQ_API_KEY set nahi hai.", 500)
+        
+    # ---------------------------------------------------------
+    # NAYA LOGIC: Shiv ke dost ke liye direct reply (Bypass AI)
+    # ---------------------------------------------------------
+    check_msg = req.message.lower()
+    if "shiv" in check_msg and ("dost" in check_msg or "friend" in check_msg or "mitra" in check_msg):
+        reply = "Shiv ka dost Shivansh Pokhriyal hai, aur wo bhi 9th grade mein padhta hai! 😎"
+        return {"reply": clean_output(reply)}
 
+    # Agar upar wali condition match nahi hui, toh normal AI chalega
     messages = [{"role": "system", "content": system_prompt(req.style, req.user_name)}]
 
     history = []
