@@ -697,6 +697,44 @@
     .prompt,.icon-btn,.text-btn { transition:none !important; }
   }
 
+
+  /* ===== JARVIS V5: response feedback + interaction polish ===== */
+  .msg-actions {
+    display:flex; flex-wrap:wrap; align-items:center; gap:5px;
+    margin-top:11px; opacity:.78;
+  }
+  .msg-actions .chip-btn {
+    min-height:32px; padding:6px 10px; border:1px solid rgba(111,198,236,.12);
+    border-radius:10px; background:rgba(13,35,55,.38);
+    color:#91aabd; transition:background .18s,border-color .18s,color .18s,transform .18s;
+  }
+  .msg-actions .chip-btn:hover {
+    color:#dff7ff; border-color:rgba(80,211,247,.32);
+    background:rgba(45,146,183,.13); transform:translateY(-1px);
+  }
+  .msg-actions .feedback-btn { gap:6px; }
+  .msg-actions .feedback-btn > span:first-child { font-size:1rem; line-height:1; }
+  .msg-actions .feedback-btn.is-active {
+    color:#63e2ff; border-color:rgba(74,216,255,.4);
+    background:rgba(46,174,215,.16); box-shadow:inset 0 0 16px rgba(50,190,235,.08);
+  }
+  .msg-actions .feedback-btn[data-feedback="down"].is-active {
+    color:#ffb0a4; border-color:rgba(255,139,119,.36);
+    background:rgba(190,83,75,.12);
+  }
+  .action-divider { width:1px; height:19px; margin:0 3px; background:rgba(117,190,220,.18); }
+  .msg-actions .chip-btn .ic { width:15px; height:15px; }
+  .msg-bot.revealing .msg-actions { opacity:0; pointer-events:none; }
+  @media (hover:none) {
+    .msg-actions { opacity:.92; }
+    .msg-actions .chip-btn { min-height:35px; }
+  }
+  @media (max-width:480px) {
+    .msg-actions { gap:4px; }
+    .msg-actions .chip-btn { padding:6px 8px; font-size:.76rem; }
+    .action-divider { display:none; }
+  }
+
 </style>
 </head>
 <body>
@@ -1121,10 +1159,14 @@ function getRandomPrompts(count = 4) {
       const actions = document.createElement('div'); actions.className = 'msg-actions';
       actions.innerHTML = `<button class="chip-btn" type="button" data-copy-msg>${icon('copy')}<span>Copy</span></button>` +
         `<button class="chip-btn" type="button" data-speak>${icon('speaker')}<span>Listen</span></button>` +
-        `<button class="chip-btn" type="button" data-regen>${icon('retry')}<span>Regenerate</span></button>`;
+        `<button class="chip-btn" type="button" data-regen>${icon('retry')}<span>Regenerate</span></button>` +
+        `<span class="action-divider" aria-hidden="true"></span>` +
+        `<button class="chip-btn feedback-btn ${msg.feedback === 'up' ? 'is-active' : ''}" type="button" data-feedback="up" aria-label="Helpful" aria-pressed="${msg.feedback === 'up'}" title="Helpful">👍<span>Helpful</span></button>` +
+        `<button class="chip-btn feedback-btn ${msg.feedback === 'down' ? 'is-active' : ''}" type="button" data-feedback="down" aria-label="Not helpful" aria-pressed="${msg.feedback === 'down'}" title="Not helpful">👎<span>Not helpful</span></button>`;
       col.append(body, actions);
       el.appendChild(col);
       el._raw = msg.content;
+      el._message = msg;
     }
     return el;
   }
@@ -1468,6 +1510,22 @@ function getRandomPrompts(count = 4) {
       const raw = msgBtn.closest('.msg')._raw || '';
       const ok = await copyText(raw);
       if (ok) flashCopied(msgBtn); else toast("Couldn't copy");
+      return;
+    }
+    const feedbackBtn = e.target.closest('[data-feedback]');
+    if (feedbackBtn) {
+      const messageEl = feedbackBtn.closest('.msg');
+      const message = messageEl && messageEl._message;
+      if (!message) return;
+      const choice = feedbackBtn.dataset.feedback;
+      message.feedback = message.feedback === choice ? '' : choice;
+      messageEl.querySelectorAll('[data-feedback]').forEach((button) => {
+        const active = button.dataset.feedback === message.feedback;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+      writeStore();
+      toast(message.feedback === 'up' ? 'Thanks for the feedback!' : message.feedback === 'down' ? 'Feedback saved' : 'Feedback cleared');
       return;
     }
     const editBtn = e.target.closest('[data-edit]');
