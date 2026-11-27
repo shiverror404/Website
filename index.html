@@ -69,11 +69,12 @@
     --focus: rgba(7, 115, 155, 0.18);
     --shadow: 0 18px 50px rgba(15, 35, 70, 0.16);
   }
+
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
   body {
     font-family: var(--font);
-    font-size: var(--fs, 16px);
+    font-size: 16px;
     line-height: 1.5;
     background: var(--bg);
     color: var(--text);
@@ -84,20 +85,29 @@
   button { cursor: pointer; background: none; border: 0; }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
   [hidden] { display: none !important; }
+
   .ic { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .app { display: grid; grid-template-columns: 300px minmax(0, 1fr); height: 100vh; height: 100dvh; overflow: hidden; position: relative; z-index: 1; }
+
+  .app { display: grid; grid-template-columns: 300px minmax(0, 1fr); height: 100vh; height: 100dvh; overflow: hidden; }
   .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; }
+
   .avatar { position: relative; display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-2); color: var(--accent); font-weight: 700; overflow: hidden; flex: none; }
   .avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  .avatar.lg { width: 90px; height: 90px; font-size: 1.8rem; }
+  .avatar.lg { width: 76px; height: 76px; font-size: 1.8rem; }
   .avatar.sm { width: 30px; height: 30px; }
-  .orb { position: relative; display: grid; place-items: center; width: 116px; height: 116px; border-radius: 50%; margin-bottom: 6px; box-shadow: 0 0 90px color-mix(in srgb, var(--accent) 24%, transparent); animation: float 6s ease-in-out .8s infinite; }
-  .orb::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, var(--accent), transparent 38%, transparent 62%, var(--accent)); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px)); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px)); animation: spin 9s linear infinite; }
-  .orb.mini { width: 36px; height: 36px; margin: 0; box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 40%, transparent); animation: none; }
+  .orb { position: relative; display: grid; place-items: center; width: 96px; height: 96px; border-radius: 50%; }
+  .orb::before, .orb.mini::before {
+    content: ""; position: absolute; inset: 0; border-radius: 50%;
+    background: conic-gradient(from 0deg, var(--accent), transparent 38%, transparent 62%, var(--accent));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+    animation: spin 9s linear infinite;
+  }
+  .orb.mini { width: 36px; height: 36px; flex: none; }
   .orb.mini::before { animation-duration: 1.4s; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes float { 50% { transform: translateY(-7px); } }
+
   .sidebar { display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-right: 1px solid var(--line); padding: 14px 12px 12px; gap: 12px; }
   .side-top { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.01em; }
@@ -122,6 +132,7 @@
   .empty-list { padding: 18px 10px; font-size: 0.9rem; color: var(--muted); }
   .side-foot { padding: 4px 8px 0; font-size: 0.78rem; color: var(--muted); }
   .scrim { display: none; }
+
   .topbar { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 6px 12px; padding-top: calc(6px + env(safe-area-inset-top)); background: var(--bg); border-bottom: 1px solid var(--line); z-index: 5; }
   .icon-btn { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; color: var(--muted); transition: background .15s, color .15s; }
   .icon-btn:hover { background: var(--surface-2); color: var(--text); }
@@ -131,6 +142,7 @@
   .text-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
   .text-btn:disabled { opacity: 0.4; cursor: default; }
   #menu-btn { display: none; }
+
   .messages { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
   .column { display: flex; flex-direction: column; gap: 24px; max-width: 780px; margin: 0 auto; padding: 26px 16px 10px; min-height: 100%; }
   .thread { display: flex; flex-direction: column; gap: 24px; }
@@ -183,13 +195,15 @@
   .error-card small { display: block; margin-top: 2px; color: var(--muted); overflow-wrap: anywhere; }
   .error-card button { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); font-size: 0.9rem; }
   .error-card button:hover { border-color: var(--accent); }
-  .empty { margin: auto; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; padding: 12px 0; }
-  .empty h2 { max-width: 26ch; font-size: clamp(1.4rem, 4.6vw, 2rem); line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
-  .empty p { color: var(--muted); font-size: 0.95rem; }
+
+  .empty { margin: auto; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; padding: 24px 0; }
+  .empty h2 { max-width: 20ch; font-size: clamp(1.45rem, 4.4vw, 1.95rem); line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; }
+  .empty p { color: var(--muted); }
   .prompts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 620px; margin-top: 10px; }
-  .prompt { text-align: left; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); font-size: 0.92rem; line-height: 1.4; transition: border-color .15s, background .15s; }
+  .prompt { text-align: left; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); font-size: 0.92rem; line-height: 1.4; transition: border-color .15s, background .15s; }
   .prompt:hover { border-color: var(--accent); background: var(--surface-2); }
-  .composer { padding: 8px 16px calc(14px + env(safe-area-inset-bottom)); position: relative; }
+
+  .composer { padding: 8px 16px calc(12px + env(safe-area-inset-bottom)); position: relative; }
   .composer-inner { max-width: 780px; margin: 0 auto; }
   .field { display: flex; align-items: flex-end; gap: 8px; padding: 7px 7px 7px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; transition: border-color .15s, box-shadow .15s; }
   .field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus); }
@@ -204,6 +218,7 @@
   .foot-note { margin-top: 8px; text-align: center; font-size: 0.78rem; color: var(--muted); }
   .jump { position: absolute; right: 18px; top: -50px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); color: var(--text); }
   .jump:hover { border-color: var(--accent); }
+
   dialog { margin: auto; width: min(92vw, 380px); padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
   dialog::backdrop { background: rgba(3, 8, 16, 0.6); backdrop-filter: blur(2px); }
   dialog h3 { font-size: 1.05rem; margin-bottom: 6px; }
@@ -214,9 +229,11 @@
   .btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
   .toast { position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom)); transform: translate(-50%, 10px); padding: 9px 16px; border-radius: 999px; background: var(--text); color: var(--bg); font-size: 0.88rem; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 80; }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
+
   @media (max-width: 899px) {
     .app { grid-template-columns: minmax(0, 1fr); }
     .sidebar { position: fixed; top: 0; bottom: 0; left: 0; width: min(86vw, 320px); z-index: 40; padding-top: calc(14px + env(safe-area-inset-top)); transform: translateX(-102%); transition: transform .28s cubic-bezier(.2, .8, .2, 1); }
@@ -230,22 +247,22 @@
     .prompts { grid-template-columns: 1fr; }
     .column { padding-top: 18px; }
     .hist-del { opacity: 1; }
-    .orb { width: 88px; height: 88px; }
-    .avatar.lg { width: 68px; height: 68px; }
-    .empty { gap: 12px; padding: 8px 0; }
-    .empty h2 { font-size: 1.4rem; }
-    .prompt:nth-child(n+4) { display: none; }
   }
   @media (min-width: 900px) { #close-sidebar { display: none; } }
   @media (hover: none) { .hist-del { opacity: 1; } .msg-actions { opacity: 1; } }
-  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
-  body::before { content: ""; position: fixed; inset: -20%; z-index: 0; pointer-events: none;
-    background: radial-gradient(38% 34% at 78% 12%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 70%),
-                radial-gradient(34% 30% at 12% 88%, color-mix(in srgb, var(--accent-2) 22%, transparent), transparent 70%),
-                radial-gradient(30% 26% at 50% 50%, color-mix(in srgb, var(--accent-2) 9%, transparent), transparent 70%);
-    animation: drift 28s ease-in-out infinite alternate; }
-  @keyframes drift { to { transform: translate3d(3%, -2%, 0) scale(1.08) rotate(2deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+
+  /* ---- polish layer ---- */
+  body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: radial-gradient(60% 45% at 85% -8%, color-mix(in srgb, var(--accent) 17%, transparent), transparent 70%),
+                radial-gradient(50% 40% at -5% 105%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%); }
+  .app { position: relative; z-index: 1; }
   .topbar { background: color-mix(in srgb, var(--bg) 72%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  .orb { width: 112px; height: 112px; box-shadow: 0 0 70px color-mix(in srgb, var(--accent) 32%, transparent); animation: breathe 4.5s ease-in-out infinite; }
+  .avatar.lg { width: 88px; height: 88px; }
+  @keyframes breathe { 50% { box-shadow: 0 0 100px color-mix(in srgb, var(--accent) 50%, transparent); } }
   .bubble { background: linear-gradient(135deg, var(--user-bg), color-mix(in srgb, var(--user-bg) 72%, var(--accent))); box-shadow: 0 6px 18px color-mix(in srgb, var(--user-bg) 35%, transparent); }
   .msg-bot > .avatar { box-shadow: 0 0 0 1px var(--line), 0 0 16px color-mix(in srgb, var(--accent) 25%, transparent); }
   .field { background: color-mix(in srgb, var(--surface) 86%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: var(--shadow); padding-left: 20px; }
@@ -256,11 +273,15 @@
   .mic:hover { background: var(--surface-2); color: var(--text); }
   .mic.listening { background: var(--danger); color: #fff; animation: rec 1.2s ease-in-out infinite; }
   @keyframes rec { 50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--danger) 25%, transparent); } }
+  .prompt { box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 12%, transparent); }
   .prompt:hover { transform: translateY(-2px); box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 14%, transparent); }
   .msg-bot:not(:last-child) [data-regen] { display: none; }
   .chip-btn[data-on] { color: var(--accent); }
+  .sidebar { background: color-mix(in srgb, var(--surface) 92%, transparent); }
+
   :root { --tk-c: #6b7f99; --tk-s: #8be28b; --tk-n: #ffb86b; --tk-k: #c79bff; --tk-f: #6fd3ff; }
   html[data-theme="light"] { --tk-c: #6b7a90; --tk-s: #1a7f37; --tk-n: #b35900; --tk-k: #7a3fd1; --tk-f: #0969b3; }
+  body { font-size: var(--fs, 16px); }
   .tk-c { color: var(--tk-c); font-style: italic; } .tk-s { color: var(--tk-s); } .tk-n { color: var(--tk-n); } .tk-k { color: var(--tk-k); } .tk-f { color: var(--tk-f); }
   .tblwrap { overflow-x: auto; margin: 0.4em 0 0.9em; border: 1px solid var(--line); border-radius: 12px; }
   .prose table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
@@ -275,6 +296,7 @@
   .seg { display: flex; gap: 4px; padding: 3px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; }
   .seg button { flex: 1; padding: 7px 6px; border-radius: 8px; font-size: 0.88rem; color: var(--muted); }
   .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+
   .btn-ghost { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); font-weight: 600; transition: border-color .15s; }
   .btn-ghost:hover { border-color: var(--accent); }
   .btn.ok { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
@@ -288,10 +310,24 @@
   .edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
   .streaming .prose > *:last-child::after { content: ""; display: inline-block; width: 7px; height: 1.05em; margin-left: 3px; vertical-align: -3px; border-radius: 2px; background: var(--accent); animation: blink 1s steps(2) infinite; }
   @keyframes blink { 50% { opacity: 0; } }
+
+  /* ===== DESIGN v2 ===== */
   @property --ang { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
   :root { --accent-2: #8b7bff; --glass: rgba(13, 22, 38, 0.64); --glass-2: rgba(24, 38, 62, 0.5); --brd: rgba(130, 175, 235, 0.16); --display: "Sora", var(--font); --ease: cubic-bezier(.22, .8, .3, 1); --user-bg: #1b4f8f; }
   html[data-theme="light"] { --accent-2: #5b4bd6; --glass: rgba(255, 255, 255, 0.74); --glass-2: rgba(255, 255, 255, 0.62); --brd: rgba(20, 60, 110, 0.13); --user-bg: #0a7fa8; --shadow: 0 18px 50px rgba(15, 35, 70, 0.14); }
   ::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+
+  body::before { inset: -20%; background:
+    radial-gradient(38% 34% at 78% 12%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 70%),
+    radial-gradient(34% 30% at 12% 88%, color-mix(in srgb, var(--accent-2) 22%, transparent), transparent 70%),
+    radial-gradient(30% 26% at 50% 50%, color-mix(in srgb, var(--accent-2) 9%, transparent), transparent 70%);
+    animation: drift 28s ease-in-out infinite alternate; }
+  html[data-theme="light"] body::before { opacity: 0.55; }
+  @keyframes drift { to { transform: translate3d(3%, -2%, 0) scale(1.08) rotate(2deg); } }
+  body::after { content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.5;
+    background-image: linear-gradient(var(--brd) 1px, transparent 1px), linear-gradient(90deg, var(--brd) 1px, transparent 1px); background-size: 44px 44px;
+    -webkit-mask: radial-gradient(70% 55% at 50% 0%, #000, transparent 75%); mask: radial-gradient(70% 55% at 50% 0%, #000, transparent 75%); }
+
   .sidebar { background: var(--glass); -webkit-backdrop-filter: blur(22px) saturate(140%); backdrop-filter: blur(22px) saturate(140%); border-right: 1px solid var(--brd); gap: 14px; padding: 16px 12px 12px; }
   .brand { font-family: var(--display); font-weight: 800; font-size: 1.08rem; letter-spacing: 0.03em; }
   .wordmark em { font-style: normal; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em; padding: 3px 7px; margin-left: 7px; border-radius: 999px; color: var(--on-accent); background: linear-gradient(135deg, var(--accent), var(--accent-2)); vertical-align: 3px; }
@@ -307,17 +343,22 @@
   .hist-item.active::before { box-shadow: 0 0 12px var(--accent); }
   .side-foot { display: flex; align-items: center; gap: 8px; font-size: 0.72rem; }
   .side-foot::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+
   .topbar { position: relative; background: transparent; border-bottom: 0; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
   .topbar::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--brd) 20%, var(--brd) 80%, transparent); }
   .chat-title { font-family: var(--display); font-weight: 600; font-size: 0.98rem; }
   .icon-btn { border-radius: 12px; }
   .icon-btn:hover { background: var(--glass-2); box-shadow: inset 0 0 0 1px var(--brd); }
+
   .empty { gap: 16px; padding: 28px 0 12px; }
   .empty > * { animation: rise .75s var(--ease) both; }
   .empty > :nth-child(2) { animation-delay: .08s; } .empty > :nth-child(3) { animation-delay: .16s; } .empty > :nth-child(4) { animation-delay: .24s; } .empty > :nth-child(5) { animation-delay: .32s; }
   @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+  @keyframes float { 50% { transform: translateY(-7px); } }
+  .orb { width: 132px; height: 132px; margin-bottom: 6px; box-shadow: 0 0 90px color-mix(in srgb, var(--accent) 24%, transparent); animation: rise .75s var(--ease) both, float 6s ease-in-out .8s infinite; }
   .orb::after { content: ""; position: absolute; inset: -16px; border-radius: 50%; border: 1px dashed color-mix(in srgb, var(--accent) 38%, transparent); animation: spin 26s linear infinite reverse; }
   .avatar.lg { width: 104px; height: 104px; box-shadow: 0 0 0 1px var(--brd), 0 0 40px color-mix(in srgb, var(--accent-2) 35%, transparent); }
+  .orb.mini { width: 36px; height: 36px; margin: 0; box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 40%, transparent); animation: none; }
   .orb.mini::after { display: none; }
   .empty h2 { font-family: var(--display); font-size: clamp(1.75rem, 6.4vw, 2.6rem); font-weight: 700; letter-spacing: -0.025em; line-height: 1.12; max-width: 18ch; background: linear-gradient(180deg, var(--text) 30%, color-mix(in srgb, var(--text) 55%, var(--accent))); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .empty p { font-size: 1.02rem; max-width: 34ch; }
@@ -331,6 +372,7 @@
   .prompt:active { transform: scale(0.985); }
   .p-ic { position: relative; display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 10px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent); }
   .p-tx { position: relative; font-size: 0.92rem; line-height: 1.4; font-weight: 500; }
+
   .msg-user .bubble { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 28%, var(--user-bg)), color-mix(in srgb, var(--accent-2) 40%, var(--user-bg))); color: #fff; border-radius: 22px 22px 6px 22px; padding: 11px 17px; box-shadow: 0 10px 28px color-mix(in srgb, var(--accent-2) 26%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.25); }
   .msg-col::before { content: "JARVIS"; display: block; margin-bottom: 4px; font-family: var(--display); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.16em; color: var(--muted); }
   .msg-bot .avatar { width: 34px; height: 34px; }
@@ -342,9 +384,13 @@
   .codeblock { border-radius: 14px; border-color: var(--brd); background: color-mix(in srgb, var(--surface) 80%, var(--bg)); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16); }
   .codehead { position: relative; padding-left: 58px; background: var(--glass-2); }
   .codehead::before { content: ""; position: absolute; left: 15px; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%; background: #ff6b6b; box-shadow: 16px 0 0 #ffc24b, 32px 0 0 #3ddc97; }
+
   .composer { padding: 6px 16px calc(14px + env(safe-area-inset-bottom)); }
   .field { position: relative; border-radius: 28px; padding: 8px 8px 8px 22px; background: var(--glass); border: 1px solid var(--brd); -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.05); }
-  .field::before { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1.5px; pointer-events: none; opacity: 0; transition: opacity .3s; background: conic-gradient(from var(--ang), var(--accent), var(--accent-2), transparent 40%, transparent 60%, var(--accent)); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; animation: ang 5s linear infinite; }
+  .field::before { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1.5px; pointer-events: none; opacity: 0; transition: opacity .3s;
+    background: conic-gradient(from var(--ang), var(--accent), var(--accent-2), transparent 40%, transparent 60%, var(--accent));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; animation: ang 5s linear infinite; }
   @keyframes ang { to { --ang: 360deg; } }
   .field:focus-within { border-color: transparent; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3), 0 0 44px color-mix(in srgb, var(--accent) 15%, transparent); }
   .field:focus-within::before { opacity: 1; }
@@ -353,6 +399,7 @@
   .send.stop { box-shadow: none; }
   .foot-note { font-size: 0.72rem; opacity: 0.8; }
   @media (hover: hover) and (min-width: 900px) { .foot-note::after { content: " \00b7  Enter to send \00b7  Shift+Enter for new line"; } }
+
   dialog { padding: 24px; border-radius: 22px; background: var(--glass); border: 1px solid var(--brd); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5); }
   dialog[open] { animation: pop2 .28s var(--ease); }
   @keyframes pop2 { from { opacity: 0; transform: translateY(14px) scale(.96); } }
@@ -365,7 +412,35 @@
   .jump { background: var(--glass); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-color: var(--brd); }
   .messages { scroll-behavior: smooth; }
   ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 35%, transparent); border: 2px solid transparent; background-clip: content-box; }
-  @media (max-width: 899px) { .sidebar { background: var(--glass); } .orb { width: 112px; height: 112px; } .avatar.lg { width: 88px; height: 88px; } .column { padding-inline: 14px; } .prompts { gap: 10px; } }
+  @media (max-width: 899px) {
+    .sidebar { background: var(--glass); }
+    .orb { width: 112px; height: 112px; }
+    .avatar.lg { width: 88px; height: 88px; }
+    .column { padding-inline: 14px; }
+    .prompts { gap: 10px; }
+  }
+
+  /* tuning */
+  .empty { gap: 14px; padding: 12px 0; }
+  .empty h2 { font-size: clamp(1.4rem, 4.6vw, 2rem); max-width: 26ch; }
+  .orb { width: 116px; height: 116px; }
+  .avatar.lg { width: 90px; height: 90px; }
+  .codehead { padding-left: 68px; }
+  .empty h2 { text-wrap: balance; }
+  html[data-theme="light"] body::before { opacity: 0.4; }
+  @media (max-width: 899px) {
+    .orb { width: 88px; height: 88px; }
+    .avatar.lg { width: 68px; height: 68px; }
+    .empty { gap: 12px; padding: 8px 0; }
+    .empty h2 { font-size: 1.4rem; }
+    .empty p { font-size: 0.95rem; }
+    .prompts { margin-top: 6px; }
+    .prompt { padding: 11px 14px; }
+    .prompt:nth-child(n+4) { display: none; }
+    .topbar .mobile-brand { display: none; }
+  }
+
+  /* ===== accents, living orb, voice, splash ===== */
   html[data-accent="violet"] { --accent: #a78bfa; --accent-2: #38bdf8; --user-bg: #4b3a9c; --focus: rgba(167, 139, 250, 0.22); }
   html[data-accent="emerald"] { --accent: #34d399; --accent-2: #22d3ee; --user-bg: #0e6a50; --focus: rgba(52, 211, 153, 0.22); }
   html[data-accent="orange"] { --accent: #fb923c; --accent-2: #f472b6; --user-bg: #98470f; --focus: rgba(251, 146, 60, 0.22); }
@@ -380,6 +455,7 @@
   .txt { width: 100%; padding: 11px 14px; border-radius: 12px; background: var(--glass-2); border: 1px solid var(--brd); outline: 0; font-size: 16px; }
   .txt:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus); }
   dialog { max-height: min(88dvh, 660px); overflow-y: auto; }
+
   html[data-orb="thinking"] .orb::before { animation-duration: 1.1s; }
   html[data-orb="thinking"] .orb:not(.mini) { box-shadow: 0 0 120px color-mix(in srgb, var(--accent) 45%, transparent); }
   html[data-orb="listening"] .orb::before { animation-duration: 3s; }
@@ -387,6 +463,7 @@
   html[data-orb="speaking"] .orb:not(.mini) { animation-duration: 0.7s; }
   html[data-orb] .brand .avatar { animation: orbPulse 1.3s ease-in-out infinite; }
   @keyframes orbPulse { 50% { transform: scale(1.07); box-shadow: 0 0 130px color-mix(in srgb, var(--accent) 50%, transparent); } }
+
   .voice { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 24px; text-align: center; background: radial-gradient(60% 50% at 50% 38%, color-mix(in srgb, var(--accent) 16%, var(--bg)), var(--bg) 78%); animation: vin .35s var(--ease); }
   @keyframes vin { from { opacity: 0; transform: scale(1.04); } }
   .voice-x { position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 14px; width: 44px; height: 44px; }
@@ -400,11 +477,95 @@
   .v-status { font-family: var(--display); font-size: 1.25rem; font-weight: 600; }
   .v-text { min-height: 3.2em; max-width: 34ch; color: var(--muted); line-height: 1.55; }
   .v-hint { position: absolute; bottom: calc(22px + env(safe-area-inset-bottom)); font-size: 0.76rem; color: var(--muted); opacity: 0.7; }
+
   .splash { position: fixed; inset: 0; z-index: 200; display: grid; place-content: center; justify-items: center; gap: 20px; background: radial-gradient(55% 45% at 50% 45%, color-mix(in srgb, var(--accent) 18%, var(--bg)), var(--bg) 78%); transition: opacity .5s ease, visibility .5s; }
   .splash.out { opacity: 0; visibility: hidden; }
   .splash img { width: min(52vw, 230px); height: min(52vw, 230px); border-radius: 50%; object-fit: cover; box-shadow: 0 0 90px color-mix(in srgb, var(--accent) 45%, transparent); animation: logoIn 1s var(--ease) both; }
   .splash span { font-family: var(--display); font-weight: 800; font-size: 1rem; letter-spacing: 0.5em; padding-left: 0.5em; color: var(--muted); animation: rise .9s .35s var(--ease) both; }
   @keyframes logoIn { from { opacity: 0; transform: scale(.78) rotate(-8deg); filter: blur(10px); } }
+
+  /* ===== GLASS UI v3 — cyan glass workspace ===== */
+  :root {
+    --accent: #42d9ff;
+    --accent-2: #6caeff;
+    --glass: rgba(10, 22, 39, 0.72);
+    --glass-2: rgba(20, 39, 63, 0.58);
+    --brd: rgba(117, 202, 245, 0.19);
+    --shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+  }
+  html[data-theme="light"] {
+    --accent: #087fa8;
+    --accent-2: #4d9fd2;
+    --glass: rgba(255, 255, 255, 0.82);
+    --glass-2: rgba(238, 247, 253, 0.78);
+    --brd: rgba(28, 117, 158, 0.16);
+  }
+  body { overflow: hidden; }
+  .app {
+    position: relative;
+    z-index: 1;
+    grid-template-columns: 286px minmax(0, 1fr);
+    gap: 14px;
+    padding: 14px;
+    background: transparent;
+  }
+  .sidebar {
+    border: 1px solid var(--brd);
+    border-radius: 24px;
+    padding: 18px 14px 14px;
+    background: linear-gradient(155deg, color-mix(in srgb, var(--glass) 94%, var(--accent) 6%), var(--glass));
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.07);
+  }
+  .main {
+    overflow: hidden;
+    border: 1px solid var(--brd);
+    border-radius: 24px;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--glass) 92%, var(--accent) 8%), var(--glass));
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.07);
+    -webkit-backdrop-filter: blur(24px) saturate(145%);
+    backdrop-filter: blur(24px) saturate(145%);
+  }
+  .topbar { min-height: 64px; padding-inline: 20px; }
+  .chat-title { letter-spacing: -.02em; }
+  .messages { background: linear-gradient(180deg, rgba(255,255,255,.012), transparent 28%); }
+  .column { max-width: 850px; padding: 34px 24px 18px; }
+  .thread { gap: 28px; }
+  .msg { gap: 14px; }
+  .msg-bot .avatar { box-shadow: 0 0 0 1px var(--brd), 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .msg-user .bubble { border: 1px solid color-mix(in srgb, var(--accent) 36%, transparent); }
+  .composer { padding: 10px 24px calc(18px + env(safe-area-inset-bottom)); }
+  .composer-inner { max-width: 850px; margin: 0 auto; }
+  .field { border-radius: 22px; background: color-mix(in srgb, var(--glass) 86%, transparent); }
+  .field:focus-within { border-color: color-mix(in srgb, var(--accent) 65%, var(--brd)); }
+  .send { border-radius: 15px; }
+  .btn-primary, .prompt, .search, .field, .typing, .codeblock, dialog { box-shadow: 0 12px 32px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.045); }
+  .hist-item.active { background: linear-gradient(100deg, color-mix(in srgb, var(--accent) 17%, transparent), color-mix(in srgb, var(--accent) 5%, transparent)); }
+  .side-foot { padding: 10px 8px 2px; border-top: 1px solid var(--brd); }
+  .empty { padding-top: clamp(24px, 7vh, 66px); }
+  .orb:not(.mini) { filter: drop-shadow(0 0 18px color-mix(in srgb, var(--accent) 18%, transparent)); }
+  .icon-btn, .text-btn { transition: background .2s, color .2s, transform .2s; }
+  .icon-btn:active, .text-btn:active { transform: scale(.95); }
+  @media (max-width: 899px) {
+    body { overflow: hidden; }
+    .app { display: block; padding: 0; }
+    .main { height: 100%; border: 0; border-radius: 0; box-shadow: none; }
+    .sidebar {
+      top: 0; bottom: 0; left: 0;
+      width: min(86vw, 330px);
+      border-radius: 0 24px 24px 0;
+      border-left: 0;
+      padding-top: calc(16px + env(safe-area-inset-top));
+    }
+    .topbar { min-height: 58px; padding-inline: 10px; }
+    .column { padding: 24px 14px 12px; }
+    .composer { padding-inline: 12px; }
+    .field { border-radius: 20px; padding-left: 14px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .orb, .orb::before, .orb::after, .btn-primary::after { animation: none !important; }
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+  }
+
 </style>
 </head>
 <body>
@@ -440,6 +601,7 @@
 </svg>
 
 <div class="app" id="app">
+
   <aside class="sidebar" id="sidebar" aria-label="Chat history">
     <div class="side-top">
       <div class="brand"><span class="avatar" id="brand-avatar" aria-hidden="true"></span><span class="wordmark">JARVIS<em>AI</em></span></div>
@@ -533,6 +695,7 @@
   <p class="v-hint">Orb par tap karke beech mein bol sakte ho</p>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
 <noscript><p style="padding:24px;font-family:sans-serif">JARVIS AI needs JavaScript to run.</p></noscript>
 
 <script>
@@ -545,30 +708,31 @@
   const THEME_KEY = 'jarvis_theme';
   const GREETING  = "Namaste, sir. Main JARVIS hoon. Aaj main aapki kya madad kar sakta hoon?";
   const REQUEST_TIMEOUT_MS = 60000;
+  // Suggestions ka pool (har baar naye wale uthayega)
+const ALL_PROMPTS = [
+  "Ek simple Python script likho jo folder ki files rename kare",
+  "Kal ki meeting ke liye ek chhota professional email draft karo",
+  "Quantum computing ko aasan bhasha mein samjhao",
+  "Mere liye 3 din ka beginner workout plan banao",
+  "Bhai mujhe ek funny joke sunao",
+  "Batao ki AI kaam kaise karta hai?",
+  "Mera din kharab ja raha hai, kuch motivation do",
+  "Mujhe HTML aur CSS ka basic structure sikhao",
+  "Ek acchi si short story likho",
+  "Duniya ka sabse ajeeb fact batao",
+  "Mujhe aaj raat ka dinner suggest karo",
+  "Ek 10th class ke student ke liye best study timetable banao",
+  "How to improve focus and concentration?",
+  "Mujhe ek naya English word sikhao",
+  "Batao space mein kya hota hai?",
+  "Mere liye ek acchi si shayari likho"
+];
 
-  const ALL_PROMPTS = [
-    "Ek simple Python script likho jo folder ki files rename kare",
-    "Kal ki meeting ke liye ek chhota professional email draft karo",
-    "Quantum computing ko aasan bhasha mein samjhao",
-    "Mere liye 3 din ka beginner workout plan banao",
-    "Bhai mujhe ek funny joke sunao",
-    "Batao ki AI kaam kaise karta hai?",
-    "Mera din kharab ja raha hai, kuch motivation do",
-    "Mujhe HTML aur CSS ka basic structure sikhao",
-    "Ek acchi si short story likho",
-    "Duniya ka sabse ajeeb fact batao",
-    "Mujhe aaj raat ka dinner suggest karo",
-    "Ek 10th class ke student ke liye best study timetable banao",
-    "How to improve focus and concentration?",
-    "Mujhe ek naya English word sikhao",
-    "Batao space mein kya hota hai?",
-    "Mere liye ek acchi si shayari likho"
-  ];
-
-  function getRandomPrompts(count = 4) {
-    const shuffled = [...ALL_PROMPTS].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, count);
-  }
+// Har baar 4 random naye suggestions uthayega
+function getRandomPrompts(count = 4) {
+  const shuffled = [...ALL_PROMPTS].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
+}
 
   const $ = (id) => document.getElementById(id);
   const app = $('app'), sidebar = $('sidebar'), overlay = $('overlay');
@@ -581,7 +745,6 @@
   const dialog = $('dialog'), dialogMsg = $('dialog-message'), dialogOk = $('dialog-ok'), toastEl = $('toast');
   const desktopMQ = window.matchMedia('(min-width: 900px)');
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const micBtn = $('mic-btn');
 
   let allChats = loadChats();
   let currentChatId = null;
@@ -599,7 +762,6 @@
       return v.filter(c => c && c.id && Array.isArray(c.messages)).map(c => ({ ...c, id: String(c.id), title: c.title || 'New Chat' }));
     } catch (e) { return []; }
   }
-  
   let saveTimer = null;
   function writeStore() {
     clearTimeout(saveTimer);
@@ -837,26 +999,29 @@
   }
 
   function buildEmpty() {
-    const wrap = document.createElement('div');
-    wrap.className = 'empty';
-    const orb = document.createElement('div'); orb.className = 'orb';
-    orb.appendChild(makeAvatar('lg'));
-    const h = document.createElement('h2'); h.textContent = greetTitle();
-    const p = document.createElement('p'); p.textContent = S.name ? 'Main JARVIS hoon. Aaj kya madad karun?' : 'Ask in Hindi, English or Hinglish.';
-    const grid = document.createElement('div'); grid.className = 'prompts';
-    const randomPrompts = getRandomPrompts(4);
-    randomPrompts.forEach((t, i) => {
-      const b = document.createElement('button');
-      b.type = 'button'; b.className = 'prompt'; b.dataset.prompt = t;
-      b.innerHTML = '<span class="p-ic">' + icon(['spark', 'code', 'bulb', 'globe'][i % 4]) + '</span><span class="p-tx"></span>';
-      b.querySelector('.p-tx').textContent = t;
-      grid.appendChild(b);
-    });
-    const chips = document.createElement('div'); chips.className = 'chips';
-    ['Hindi', 'English', 'Hinglish', 'Voice'].forEach(x => { const c = document.createElement('span'); c.textContent = x; chips.appendChild(c); });
-    wrap.append(orb, h, p, chips, grid);
-    return wrap;
-  }
+  const wrap = document.createElement('div');
+  wrap.className = 'empty';
+  const orb = document.createElement('div'); orb.className = 'orb';
+  orb.appendChild(makeAvatar('lg'));
+  const h = document.createElement('h2'); h.textContent = greetTitle();
+  const p = document.createElement('p'); p.textContent = S.name ? 'Main JARVIS hoon. Aaj kya madad karun?' : 'Ask in Hindi, English or Hinglish.';
+  const grid = document.createElement('div'); grid.className = 'prompts';
+  
+  // Yahan hum random prompts utha rahe hain
+  const randomPrompts = getRandomPrompts(4);
+  randomPrompts.forEach((t, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'prompt'; b.dataset.prompt = t;
+    b.innerHTML = '<span class="p-ic">' + icon(['spark', 'code', 'bulb', 'globe'][i % 4]) + '</span><span class="p-tx"></span>';
+    b.querySelector('.p-tx').textContent = t;
+    grid.appendChild(b);
+  });
+  
+  const chips = document.createElement('div'); chips.className = 'chips';
+  ['Hindi', 'English', 'Hinglish', 'Voice'].forEach(x => { const c = document.createElement('span'); c.textContent = x; chips.appendChild(c); });
+  wrap.append(orb, h, p, chips, grid);
+  return wrap;
+}
 
   function renderChat() {
     const chat = getChat();
@@ -1061,6 +1226,7 @@
     }
   }
 
+  // FIX: Assistant use kiya hai
   const sanitizeForServer = (m) => ({
     role: m.role === 'user' ? 'user' : 'assistant',
     content: String(m.content)
@@ -1233,6 +1399,7 @@
       body.innerHTML = renderMarkdown(open ? txt + '\n```' : txt);
       if (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 160) messagesEl.scrollTop = messagesEl.scrollHeight;
     };
+    // Groq itna tez hai ki chunks ek saath aate hain, isliye text ko smooth typing ki tarah dikhate hain
     const paint = () => {
       raf = 0;
       const pending = acc.length - shown;
@@ -1356,81 +1523,188 @@
     const st = speaking ? 'speaking' : listening ? 'listening' : busy ? 'thinking' : '';
     if (st) document.documentElement.dataset.orb = st; else document.documentElement.removeAttribute('data-orb');
   }
-
   function greetTitle() {
     if (!S.name) return GREETING;
     const h = new Date().getHours();
-    const part = h >= 5 && h < 12 ? 'Good morning' : h >= 12 && h < 17 ? 'Good afternoon' : h >= 17 && h < 21 ? 'Good evening' : 'Working late';
-    return `${part}, ${S.name}! Kya haal hai?`;
+    const part = h >= 5 && h < 12 ? 'Good morning' : h >= 12 && h < 17 ? 'Good afternoon' : h >= 17 && h < 22 ? 'Good evening' : 'Hello';
+    return part + ', ' + S.name + '.';
   }
 
-  async function regenerate() {
+  const nameDlg = $('name-dlg'), nmInput = $('nm-input'), setNameEl = $('set-name');
+  function finishName(save) {
+    if (save && nmInput.value.trim()) S.name = nmInput.value.trim().slice(0, 24);
+    S.nameAsked = true; saveSettings(); nameDlg.close();
+    const c = getChat(); if (!c || !c.messages.length) renderChat();
+  }
+  $('nm-save').addEventListener('click', () => finishName(true));
+  $('nm-skip').addEventListener('click', () => finishName(false));
+  nmInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); finishName(true); } });
+  nameDlg.addEventListener('cancel', () => { S.nameAsked = true; saveSettings(); });
+  setNameEl.addEventListener('input', () => { S.name = setNameEl.value.trim().slice(0, 24); S.nameAsked = true; saveSettings(); });
+  $('settings').addEventListener('close', () => { const c = getChat(); if (!c || !c.messages.length) renderChat(); });
+  if (!S.name && !S.nameAsked && nameDlg.showModal) setTimeout(() => { if (!voiceOn) { nameDlg.showModal(); nmInput.focus(); } }, 2100);
+
+  // ---- Voice mode
+  const SRv = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const voiceEl = $('voice'), vStatus = $('v-status'), vText = $('v-text'), voiceBtn = $('voice-btn');
+  let vRec = null, vTimer = 0;
+  $('vorb').appendChild(makeAvatar('lg'));
+  const vSet = (state, msg) => { voiceEl.dataset.state = state; vStatus.textContent = msg; };
+  function vListen() {
+    if (!voiceOn || listening || busy || speaking || vBusy) return;
+    const rec = new SRv(); vRec = rec;
+    rec.lang = S.lang; rec.interimResults = true; rec.continuous = false;
+    let got = '';
+    rec.onstart = () => { listening = true; refreshOrb(); vSet('listening', 'Sun raha hoon…'); vText.textContent = ''; };
+    rec.onresult = (e) => { got = ''; for (const r of e.results) got += r[0].transcript; vText.textContent = got; };
+    rec.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { toast('Mic ki permission do'); closeVoice(); } };
+    rec.onend = () => {
+      listening = false; refreshOrb();
+      if (!voiceOn) return;
+      if (got.trim()) { vSet('thinking', 'Soch raha hoon…'); vBusy = true; sendMessage(got.trim()).finally(() => { vBusy = false; }); }
+      else vSet('idle', 'Tap karke bolo');
+    };
+    try { rec.start(); } catch (err) { listening = false; }
+  }
+  function voiceSpeak(raw) {
+    vSet('speaking', 'Bol raha hoon…');
+    vText.textContent = raw.length > 150 ? raw.slice(0, 150) + '…' : raw;
+    say(raw, () => { if (voiceOn) vSet('idle', 'Tap karke bolo'); });
+  }
+  function openVoice() {
+    if (!SRv) { toast('Voice mode ke liye Chrome use karo'); return; }
+    voiceOn = true; voiceEl.hidden = false; vSet('idle', 'Tap karke bolo'); vText.textContent = '';
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+    clearInterval(vTimer); vTimer = setInterval(vListen, 1200); vListen();
+  }
+  function closeVoice() {
+    voiceOn = false; clearInterval(vTimer);
+    try { if (vRec) vRec.abort(); window.speechSynthesis.cancel(); } catch (e) {}
+    sayId++; speaking = false; listening = false; voiceEl.hidden = true; refreshOrb();
+  }
+  voiceBtn.addEventListener('click', openVoice);
+  $('voice-close').addEventListener('click', closeVoice);
+  $('vorb').addEventListener('click', () => {
+    if (speaking) { sayId++; try { window.speechSynthesis.cancel(); } catch (e) {} speaking = false; refreshOrb(); vSet('idle', 'Tap karke bolo'); }
+    else vListen();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && voiceOn) closeVoice(); });
+  if (!SRv) voiceBtn.hidden = true;
+
+  function say(raw, done) {
+    if (!('speechSynthesis' in window)) { if (done) done(); return; }
+    const t = raw.replace(/```[\s\S]*?```/g, ' code block ').replace(/[*_`#>]/g, '');
+    const u = new SpeechSynthesisUtterance(t);
+    u.lang = /[\u0900-\u097F]/.test(t) ? 'hi-IN' : 'en-IN';
+    const my = ++sayId; speaking = true; refreshOrb();
+    u.onend = u.onerror = () => { if (my !== sayId) return; speaking = false; refreshOrb(); if (done) done(); };
+    window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+  }
+
+  function startRename(chat, btn) {
+    const inp = document.createElement('input');
+    inp.className = 'hist-edit'; inp.value = chat.title || ''; inp.maxLength = 40;
+    inp.setAttribute('aria-label', 'Chat name');
+    btn.replaceWith(inp); inp.focus(); inp.select();
+    let done = false;
+    const finish = (save) => {
+      if (done) return; done = true;
+      if (save && inp.value.trim()) chat.title = inp.value.trim();
+      persist();
+    };
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') finish(true); else if (e.key === 'Escape') finish(false); });
+    inp.addEventListener('blur', () => finish(true));
+  }
+
+  const setDlg = $('settings');
+  function syncSettingsUI() {
+    setDlg.querySelectorAll('.seg').forEach(g => g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(S[g.dataset.key] === b.dataset.val))));
+    document.documentElement.style.setProperty('--fs', S.size);
+    document.documentElement.dataset.accent = S.accent;
+    const sn = $('set-name'); if (sn && document.activeElement !== sn) sn.value = S.name || '';
+  }
+  setDlg.addEventListener('click', (e) => {
+    const b = e.target.closest('.seg button');
+    if (!b) return;
+    S[b.parentElement.dataset.key] = b.dataset.val;
+    try { localStorage.setItem(SET_KEY, JSON.stringify(S)); } catch (err) {}
+    syncSettingsUI();
+  });
+  $('settings-btn').addEventListener('click', () => { syncSettingsUI(); if (setDlg.showModal) setDlg.showModal(); });
+  syncSettingsUI();
+
+  function speak(btn) {
+    if (!('speechSynthesis' in window)) { toast('Is browser mein voice support nahi hai'); return; }
+    const ss = window.speechSynthesis;
+    if (ss.speaking) { ss.cancel(); if (btn.dataset.on) { delete btn.dataset.on; return; } }
+    const raw = btn.closest('.msg')._raw || '';
+    const t = raw.replace(/```[\s\S]*?```/g, ' code block ').replace(/[*_`#>]/g, '');
+    const u = new SpeechSynthesisUtterance(t);
+    u.lang = /[\u0900-\u097F]/.test(t) ? 'hi-IN' : 'en-IN';
+    const my = ++sayId; speaking = true; refreshOrb();
+    u.onend = u.onerror = () => { delete btn.dataset.on; if (my === sayId) { speaking = false; refreshOrb(); } };
+    btn.dataset.on = '1';
+    ss.speak(u);
+  }
+
+  function regenerate() {
+    if (busy) return;
     const chat = getChat();
-    if (!chat || chat.messages.length < 2) return;
-    const lastUserMsg = [...chat.messages].reverse().find(m => m.role === 'user');
-    if (!lastUserMsg) return;
-    if (chat.messages[chat.messages.length - 1].role === 'bot') {
-      chat.messages.pop();
-    }
+    if (!chat || !chat.messages.length) return;
+    const last = chat.messages[chat.messages.length - 1];
+    if (last.role === 'user') return;
+    chat.messages.pop();
+    if (thread.lastElementChild) thread.lastElementChild.remove();
+    const prev = chat.messages[chat.messages.length - 1];
     persist();
-    renderChat();
-    await requestReply(chat.id, lastUserMsg.content);
+    if (prev) requestReply(chat.id, prev.content);
   }
 
-  if (micBtn) {
+  const micBtn = $('mic-btn');
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) micBtn.hidden = true;
+  else {
+    let rec = null, on = false, base = '';
     micBtn.addEventListener('click', () => {
-      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-        toast('Aapka browser voice support nahi karta');
-        return;
-      }
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const recognition = new SpeechRecognition();
-      recognition.lang = S.lang || 'hi-IN';
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-
-      recognition.start();
-      micBtn.classList.add('listening');
-      toast('Bol raha hoon...');
-
-      recognition.onresult = (event) => {
-        const text = event.results[0][0].transcript;
-        input.value = text;
-        micBtn.classList.remove('listening');
-        autosize();
-        setTimeout(() => {
-          if (input.value.trim()) sendMessage();
-        }, 300);
-      };
-
-      recognition.onerror = (event) => {
-        micBtn.classList.remove('listening');
-        if (event.error !== 'aborted') toast('Voice samajh nahi aaya, dobara try karo');
-      };
-
-      recognition.onend = () => {
-        micBtn.classList.remove('listening');
-      };
+      if (on) { rec.stop(); return; }
+      rec = new SR();
+      rec.lang = S.lang; rec.interimResults = true; rec.continuous = false;
+      base = input.value.trim() ? input.value.trim() + ' ' : '';
+      rec.onstart = () => { on = true; listening = true; refreshOrb(); micBtn.classList.add('listening'); };
+      rec.onresult = (e) => { let t = ''; for (const r of e.results) t += r[0].transcript; input.value = base + t; autosize(); };
+      rec.onerror = (e) => { if (e.error === 'not-allowed') toast('Mic ki permission do'); };
+      rec.onend = () => { on = false; listening = false; refreshOrb(); micBtn.classList.remove('listening'); input.focus(); };
+      try { rec.start(); } catch (err) {}
     });
   }
 
   $('export-btn').addEventListener('click', () => {
-    const chat = getChat();
-    if (!chat || !chat.messages.length) return toast('Chat khaali hai');
-    
-    let text = `JARVIS AI - Chat Export\nDate: ${new Date().toLocaleString()}\n\n`;
-    chat.messages.forEach(m => {
-      text += `${m.role === 'user' ? 'You' : 'JARVIS'}: ${m.content}\n\n`;
-    });
-    
-    const blob = new Blob([text], { type: 'text/plain' });
+    const c = getChat();
+    if (!c || !c.messages.length) { toast('Chat khaali hai'); return; }
+    const txt = c.messages.map(m => (m.role === 'user' ? 'You' : 'JARVIS') + ': ' + m.content).join('\n\n');
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `JARVIS_Chat_${Date.now()}.txt`;
-    a.click();
-    toast('Chat download ho gayi');
+    a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
+    a.download = (c.title || 'chat').replace(/[^\w-]+/g, '_') + '.txt';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   });
 
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      if (!desktopMQ.matches) openSidebar();
+      searchEl.focus();
+    }
+  });
+  window.addEventListener('offline', () => toast('Internet band hai'));
+  window.addEventListener('online', () => toast('Wapas online'));
+
+  applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
+  syncSidebarA11y();
+
+  if (allChats.length === 0) createNewChat();
+  else { currentChatId = allChats[allChats.length - 1].id; renderChat(); renderHistoryList(); }
+  autosize();
 })();
 </script>
 </body>
