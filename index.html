@@ -888,7 +888,7 @@
     </label>
     <nav id="history-list" aria-label="Previous chats"></nav>
     <button class="btn-ghost" id="install-btn" type="button" hidden><svg class="ic"><use href="#i-download"/></svg>Install app</button>
-    <p class="side-foot">Chats are saved on this device only.</p>
+    <p class="side-foot">Chats are saved on this device only. The owner can see only your name and how often you use JARVIS, never your messages.</p>
   </aside>
   <div class="scrim" id="overlay"></div>
 
@@ -979,6 +979,17 @@
   const LOGO_URL  = "logo.png";
   const STORE_KEY = 'jarvis_multi_chats';   
   const THEME_KEY = 'jarvis_theme';
+  // Anonymous device ID: admin panel mein ginti ke liye (koi personal info nahi)
+  const CLIENT_ID = (() => {
+    try {
+      let v = localStorage.getItem('jarvis_cid');
+      if (!v) {
+        v = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
+        localStorage.setItem('jarvis_cid', v);
+      }
+      return v;
+    } catch (e) { return ''; }
+  })();
   const GREETING  = "Namaste! Main JARVIS hoon. Aaj main aapki kya madad kar sakta hoon?";
   const REQUEST_TIMEOUT_MS = 60000;
   // Suggestions ka pool (har baar naye wale uthayega)
@@ -1569,7 +1580,7 @@ function getRandomPrompts(count = 4) {
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history, mode: S.mode, user_name: S.name || '' }),
+        body: JSON.stringify({ message: text, history, mode: S.mode, user_name: S.name || '', client_id: CLIENT_ID }),
         signal: controller.signal
       });
       let data = null;
@@ -1699,7 +1710,7 @@ function getRandomPrompts(count = 4) {
   async function tryStream(chatId, text, history, signal, arm) {
     let res;
     try {
-      res = await fetch(API_URL + '/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, history, mode: S.mode, user_name: S.name || '' }), signal });
+      res = await fetch(API_URL + '/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, history, mode: S.mode, user_name: S.name || '', client_id: CLIENT_ID }), signal });
     } catch (e) { if (e && e.name === 'AbortError') throw e; return false; }
     if (!res.ok || !res.body) return false;
 

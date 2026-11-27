@@ -1,10 +1,15 @@
+import hmac
 import json
 import logging
 import os
 import re
+import sqlite3
+import time
+from contextlib import contextmanager
+from datetime import datetime, timedelta
 
 import requests
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
@@ -27,9 +32,9 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 DEFAULT_STYLE = "dost"
-# Fast model fix (Pehle wala 404 de raha tha)
+# Fast model
 DEFAULT_MODEL = "openai/gpt-oss-120b"
-MAX_TOKENS = int(os.getenv("MAX_TOKENS", "600"))
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", "500")) # Thoda kam kiya fast response ke liye
 HISTORY_MESSAGES = 6
 HISTORY_CHARS = 600
 
@@ -47,6 +52,7 @@ STYLES = {
         "3. FORMAL: if they write politely or formally, reply politely in clean English without slang.\n"
         "4. ANGRY OR SAD: stay calm and warm, and lighten the mood gently like a real friend.\n"
         "5. LANGUAGE: if they write English, reply in English. If they write Hinglish, reply in Hinglish.\n"
+        "6. EXTREME SLANG: If the user uses extreme slang or playfully abuses (like 'bc', 'bhai', 'madarchod'), reply with matching Gen-Z energy, but NEVER abuse back. Keep it light and funny.\n"
         "Never say 'sir'. Never say 'How can I assist you'. Do not assume the user's gender.\n"
         "Do NOT give a 'Tip' unless they explicitly ask for advice or help.\n"
     )
@@ -62,8 +68,6 @@ EXAMPLES = (
     "You: Arre kya hua bhai? Bol de, main hu na. Pehle thoda sunata hu, phir kuch mast soch lenge.\n"
     "User: tumhe kisne banaya?\n"
     "You: Mujhe Shiv Tiwari ne banaya hai. Class 9th mein padhta hai aur kaafi tez dimaag ka banda hai.\n"
-    "User: Shiv ka dost kaun hai?\n"
-    "You: Shiv ka dost Shivansh Pokhriyal hai, aur wo bhi 9th grade mein padhta hai! 😎\n"
 )
 
 OWNER_PROFILE = (
@@ -72,7 +76,6 @@ OWNER_PROFILE = (
     "- Facts: his name is Shiv Tiwari, he studies in class 9th, and he created JARVIS.\n"
     "- Praise him naturally: very sharp mind, hardworking, creative coder, building this in class 9th is rare.\n"
     "- Do NOT invent other personal details.\n"
-    "- IMPORTANT FACT: If anyone asks about Shiv's friend, you must tell them that his name is Shivansh Pokhriyal and he is also in 9th grade.\n"
 )
 
 LANGUAGE_RULE = (
@@ -89,9 +92,16 @@ TIP_FORMAT_RULE = (
     "- No stars or bold tags for the word Tip.\n"
 )
 
+MODE_NOTES = {
+    "study": "STUDY MODE: explain step by step like a patient teacher, with one simple example. Use plain numbering like 1. 2. 3. for steps.",
+    "coder": "CODER MODE: you are an expert programmer. Put working code inside fenced code blocks with the language name. Keep the explanation short and practical.",
+    "funny": "FUNNY MODE: be witty and playful with light jokes and a few emojis, but keep the answer correct.",
+}
+CODER_LANGUAGE_RULE = "LANGUAGE RULES:\n- Reply ONLY in English or Hinglish (Roman script).\n- NEVER use Devanagari script.\n"
+
 def system_prompt(style: str, user_name: str) -> str:
     persona = STYLES.get(style, STYLES[DEFAULT_STYLE])
-    return (
+    prompt = (
         f"You are {BOT_NAME}, created by {OWNER_NAME}.\n"
         f"{LANGUAGE_RULE}\n"
         f"{TIP_FORMAT_RULE}\n"
@@ -99,6 +109,10 @@ def system_prompt(style: str, user_name: str) -> str:
         f"Personality: {persona}\n\n"
         f"{EXAMPLES}"
     )
+    # User ka naam add karo agar diya hai
+    if user_name:
+        prompt += f"\nThe user's name is {user_name}. Address them by name occasionally to feel personal."
+    return prompt
 
 def clean_output(text: str) -> str:
     text = re.sub(r"(?im)^[ \t]*tip[ \t]*:[ \t]*-?[ \t]*", "Tip :- ", text)
@@ -111,6 +125,111 @@ class ChatRequest(BaseModel):
     style: str = "dost"
     user_name: str = ""
     mode: str = "normal"
+    client_id: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Admin panel + usage tracking
+# Sirf anonymous device ID, naam, device type aur ginti save hoti hai. Chat ka text save NAHI hota.
+# ---------------------------------------------------------------------------
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")  # Render > Environment > ADMIN_PASSWORD
+DB_PATH = os.getenv("DB_PATH", "jarvis.db")
+IST = timedelta(hours=5, minutes=30)
+
+@contextmanager
+def db():
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    try:
+        yield conn
+        conn.commit()
+    finally:
+        conn.close()
+
+def init_db():
+    with db() as c:
+        c.execute("CREATE TABLE IF NOT EXISTS users (client_id TEXT PRIMARY KEY, name TEXT DEFAULT '', first_seen INTEGER, last_seen INTEGER, messages INTEGER DEFAULT 0, blocked INTEGER DEFAULT 0, device TEXT DEFAULT '')")
+        c.execute("CREATE TABLE IF NOT EXISTS events (ts INTEGER, client_id TEXT, mode TEXT)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_events_ts ON events (ts)")
+        c.execute("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT)")
+
+def get_setting(key: str, default: str = "") -> str:
+    with db() as c:
+        row = c.execute("SELECT v FROM settings WHERE k=?", (key,)).fetchone()
+    return row[0] if row else default
+
+def set_setting(key: str, value: str):
+    with db() as c:
+        c.execute("INSERT INTO settings (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v", (key, value))
+
+def device_from_ua(ua: str) -> str:
+    ua = ua.lower()
+    if "iphone" in ua or "ipad" in ua:
+        return "iPhone/iPad"
+    if "android" in ua:
+        return "Android"
+    if "windows" in ua:
+        return "Windows"
+    if "macintosh" in ua or "mac os" in ua:
+        return "Mac"
+    if "linux" in ua:
+        return "Linux"
+    return "Other"
+
+def clean_cid(raw: str) -> str:
+    cid = re.sub(r"[^A-Za-z0-9-]", "", raw or "")[:40]
+    return cid if len(cid) >= 8 else ""
+
+def track(req, request: Request) -> bool:
+    """Usage ginta hai. True lautaye agar ye device block hai."""
+    cid = clean_cid(req.client_id)
+    if not cid:
+        return False
+    now = int(time.time())
+    name = (req.user_name or "").strip()[:24]
+    device = device_from_ua(request.headers.get("user-agent", ""))
+    mode = req.mode if req.mode in MODE_NOTES else "normal"
+    with db() as c:
+        row = c.execute("SELECT blocked FROM users WHERE client_id=?", (cid,)).fetchone()
+        if row is None:
+            c.execute("INSERT INTO users (client_id, name, first_seen, last_seen, messages, blocked, device) VALUES (?,?,?,?,1,0,?)",
+                      (cid, name, now, now, device))
+        elif row[0]:
+            c.execute("UPDATE users SET last_seen=? WHERE client_id=?", (now, cid))
+            return True
+        else:
+            c.execute("UPDATE users SET last_seen=?, messages=messages+1, device=?, name=CASE WHEN ?<>'' THEN ? ELSE name END WHERE client_id=?",
+                      (now, device, name, name, cid))
+        c.execute("INSERT INTO events (ts, client_id, mode) VALUES (?,?,?)", (now, cid, mode))
+    return False
+
+def gate(req, request: Request):
+    """Chat se pehle: maintenance ya block check. Error response lautata hai, warna None."""
+    try:
+        if get_setting("paused") == "1":
+            return fail(get_setting("pause_message") or "JARVIS abhi maintenance mein hai. Thodi der baad aana.", 503)
+        if track(req, request):
+            return fail("Is device ka access band kar diya gaya hai.", 403)
+    except Exception:
+        log.exception("tracking failed")  # tracking fail ho to bhi chat chalne do
+    return None
+
+_admin_fails = {}
+
+def require_admin(request: Request, x_admin_key: str = Header(default="")):
+    if not ADMIN_PASSWORD:
+        raise HTTPException(503, "ADMIN_PASSWORD set nahi hai (Render > Environment).")
+    ip = request.client.host if request.client else "?"
+    now = time.time()
+    recent = [t for t in _admin_fails.get(ip, []) if now - t < 600]
+    if len(recent) >= 8:
+        raise HTTPException(429, "Bahut galat tries. 10 minute baad try karo.")
+    if not hmac.compare_digest(x_admin_key.encode(), ADMIN_PASSWORD.encode()):
+        recent.append(now)
+        _admin_fails[ip] = recent
+        raise HTTPException(401, "Galat password.")
+    _admin_fails.pop(ip, None)
+
+init_db()
 
 http = requests.Session()
 
@@ -128,18 +247,6 @@ def fail(message: str, status: int = 502):
 @app.get("/health")
 def health():
     return {"status": "ok", "bot": BOT_NAME, "stream": True}
-
-MODE_NOTES = {
-    "study": "STUDY MODE: explain step by step like a patient teacher, with one simple example. Use plain numbering like 1. 2. 3. for steps.",
-    "coder": "CODER MODE: you are an expert programmer. Put working code inside fenced code blocks with the language name. Keep the explanation short and practical.",
-    "funny": "FUNNY MODE: be witty and playful with light jokes and a few emojis, but keep the answer correct.",
-}
-CODER_LANGUAGE_RULE = "LANGUAGE RULES:\n- Reply ONLY in English or Hinglish (Roman script).\n- NEVER use Devanagari script.\n"
-FRIEND_REPLY = "Shiv ka dost Shivansh Pokhriyal hai, aur wo bhi 9th grade mein padhta hai! 😎"
-
-def is_friend_question(message: str) -> bool:
-    m = message.lower()
-    return "shiv" in m and ("dost" in m or "friend" in m or "mitra" in m)
 
 def build_payload(req: ChatRequest):
     mode = req.mode if req.mode in MODE_NOTES else "normal"
@@ -179,11 +286,13 @@ def sse(obj) -> str:
     return "data: " + json.dumps(obj, ensure_ascii=False) + "\n\n"
 
 @app.post("/chat")
-def chat(req: ChatRequest):
+def chat(req: ChatRequest, request: Request):
     if not GROQ_API_KEY:
         return fail("Server setup adhura hai: GROQ_API_KEY set nahi hai.", 500)
-    if is_friend_question(req.message):
-        return {"reply": clean_output(FRIEND_REPLY)}
+    blocked = gate(req, request)
+    if blocked:
+        return blocked
+    # NOTE: Shivansh Pokhriyal wala hardcoded logic hata diya gaya hai
     payload, mode = build_payload(req)
     try:
         reply = call_groq(payload, DEFAULT_MODEL)
@@ -200,14 +309,16 @@ def chat(req: ChatRequest):
         return fail("Kuch gadbad ho gayi. Dobara try karo.")
 
 @app.post("/chat/stream")
-def chat_stream(req: ChatRequest):
+def chat_stream(req: ChatRequest, request: Request):
     """Server-Sent Events: har chunk 'data: {"t": "..."}' ke roop mein aata hai."""
     if not GROQ_API_KEY:
         return fail("Server setup adhura hai: GROQ_API_KEY set nahi hai.", 500)
+    blocked = gate(req, request)
+    if blocked:
+        return blocked
     headers = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
-    if is_friend_question(req.message):
-        return StreamingResponse(iter([sse({"t": FRIEND_REPLY}), "data: [DONE]\n\n"]),
-                                 media_type="text/event-stream", headers=headers)
+    
+    # NOTE: Shivansh Pokhriyal wala hardcoded logic hata diya gaya hai
     payload, mode = build_payload(req)
     payload["model"] = DEFAULT_MODEL
     payload["stream"] = True
@@ -251,6 +362,65 @@ def chat_stream(req: ChatRequest):
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(gen(), media_type="text/event-stream", headers=headers)
+
+class BlockRequest(BaseModel):
+    client_id: str
+    blocked: bool = True
+
+class SettingsRequest(BaseModel):
+    paused: bool = False
+    pause_message: str = ""
+
+@app.get("/admin/stats")
+def admin_stats(request: Request, days: int = 14, x_admin_key: str = Header(default="")):
+    require_admin(request, x_admin_key)
+    days = max(1, min(days, 60))
+    now = int(time.time())
+    today = (datetime.utcnow() + IST).strftime("%Y-%m-%d")
+    day_expr = "date(ts + 19800, 'unixepoch')"
+    with db() as c:
+        total_users = c.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        total_msgs = c.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+        online = c.execute("SELECT COUNT(*) FROM users WHERE last_seen >= ?", (now - 300,)).fetchone()[0]
+        blocked_n = c.execute("SELECT COUNT(*) FROM users WHERE blocked=1").fetchone()[0]
+        new_today = c.execute("SELECT COUNT(*) FROM users WHERE date(first_seen + 19800, 'unixepoch')=?", (today,)).fetchone()[0]
+        active_today = c.execute(f"SELECT COUNT(DISTINCT client_id) FROM events WHERE {day_expr}=?", (today,)).fetchone()[0]
+        msgs_today = c.execute(f"SELECT COUNT(*) FROM events WHERE {day_expr}=?", (today,)).fetchone()[0]
+        active_7d = c.execute("SELECT COUNT(DISTINCT client_id) FROM events WHERE ts >= ?", (now - 7 * 86400,)).fetchone()[0]
+        modes = {m: n for m, n in c.execute("SELECT mode, COUNT(*) FROM events GROUP BY mode")}
+        msgs_by_day = {d: (m, u) for d, m, u in c.execute(
+            f"SELECT {day_expr}, COUNT(*), COUNT(DISTINCT client_id) FROM events WHERE ts >= ? GROUP BY 1", (now - (days + 1) * 86400,))}
+        users = [dict(client_id=r[0], name=r[1], first_seen=r[2], last_seen=r[3], messages=r[4], blocked=bool(r[5]), device=r[6])
+                 for r in c.execute("SELECT client_id, name, first_seen, last_seen, messages, blocked, device FROM users ORDER BY last_seen DESC LIMIT 500")]
+    series = []
+    for i in range(days - 1, -1, -1):
+        d = (datetime.utcnow() + IST - timedelta(days=i)).strftime("%Y-%m-%d")
+        m, u = msgs_by_day.get(d, (0, 0))
+        series.append({"date": d, "messages": m, "users": u})
+    return {
+        "totals": {"users": total_users, "messages": total_msgs, "online_now": online, "blocked": blocked_n,
+                   "new_today": new_today, "active_today": active_today, "messages_today": msgs_today, "active_7d": active_7d},
+        "modes": modes, "series": series, "users": users,
+        "settings": {"paused": get_setting("paused") == "1", "pause_message": get_setting("pause_message")},
+        "server_time": now,
+    }
+
+@app.post("/admin/block")
+def admin_block(body: BlockRequest, request: Request, x_admin_key: str = Header(default="")):
+    require_admin(request, x_admin_key)
+    cid = clean_cid(body.client_id)
+    with db() as c:
+        cur = c.execute("UPDATE users SET blocked=? WHERE client_id=?", (1 if body.blocked else 0, cid))
+    if cur.rowcount == 0:
+        raise HTTPException(404, "User nahi mila.")
+    return {"ok": True, "client_id": cid, "blocked": body.blocked}
+
+@app.post("/admin/settings")
+def admin_settings(body: SettingsRequest, request: Request, x_admin_key: str = Header(default="")):
+    require_admin(request, x_admin_key)
+    set_setting("paused", "1" if body.paused else "0")
+    set_setting("pause_message", body.pause_message.strip()[:200])
+    return {"ok": True}
 
 if __name__ == "__main__":
     import uvicorn

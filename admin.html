@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="dark light">
+<title>JARVIS Admin</title>
+<link rel="icon" href="icon-192.png">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg:#07111f; --card:rgba(16,30,48,.82); --card-2:rgba(24,44,68,.6); --line:rgba(112,190,235,.18);
+    --text:#e7edf6; --muted:#8fa3ba; --accent:#43dcff; --accent-2:#7baeff; --on-accent:#05202c;
+    --good:#4be3b0; --bad:#ff8a7a; --warn:#ffc46b;
+    --font: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      color-scheme: light;
+      --bg:#e9f1fa; --card:rgba(255,255,255,.9); --card-2:rgba(236,244,252,.9); --line:rgba(28,117,158,.2);
+      --text:#0e1a2c; --muted:#56677f; --accent:#087fa8; --accent-2:#4d9fd2; --on-accent:#fff;
+      --good:#0b8f6a; --bad:#c43c3c; --warn:#a86a00;
+    }
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;
+    background-image:radial-gradient(ellipse at 50% -10%,color-mix(in srgb,var(--accent) 18%,transparent),transparent 55%);
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  button,input{font:inherit;color:inherit}
+  button{cursor:pointer;border:0;background:none}
+  [hidden]{display:none!important}
+  .wrap{max-width:1100px;margin:0 auto;padding:18px 14px 40px}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;backdrop-filter:blur(14px)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:8px 14px;border-radius:12px;
+    border:1px solid var(--line);background:var(--card-2);font-weight:600;font-size:.88rem}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:linear-gradient(115deg,var(--accent),var(--accent-2));color:var(--on-accent);border-color:transparent}
+  .btn.danger{color:var(--bad)}
+  .btn.sm{min-height:32px;padding:5px 11px;font-size:.8rem;border-radius:10px}
+  .btn:disabled{opacity:.55;cursor:wait}
+  input[type=text],input[type=password],input[type=search]{width:100%;min-height:42px;padding:9px 13px;border-radius:12px;
+    border:1px solid var(--line);background:var(--card-2);outline:none}
+  input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+
+  /* login */
+  .login{min-height:100vh;display:grid;place-items:center;padding:20px}
+  .login .card{width:min(100%,380px);display:grid;gap:12px;padding:24px}
+  .login h1{font-size:1.35rem}
+  .login p{color:var(--muted);font-size:.9rem}
+  .err{color:var(--bad);font-size:.88rem;min-height:1.2em}
+
+  /* header */
+  .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .top h1{font-size:1.3rem;flex:1;min-width:140px;display:flex;align-items:center;gap:9px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--good);box-shadow:0 0 10px var(--good)}
+  .dot.off{background:var(--bad);box-shadow:0 0 10px var(--bad)}
+  .sync{color:var(--muted);font-size:.78rem}
+
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+  .stat{padding:14px}
+  .stat .n{font-size:1.8rem;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+  .stat .l{color:var(--muted);font-size:.78rem;margin-top:4px;text-transform:uppercase;letter-spacing:.07em}
+  .stat.live .n{color:var(--good)}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  @media (max-width:760px){.grid2{grid-template-columns:1fr}}
+  .card h2{font-size:.95rem;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .card h2 small{color:var(--muted);font-weight:500;font-size:.78rem}
+  svg.chart{width:100%;height:auto;display:block}
+  svg.chart text{fill:var(--muted);font-size:10px}
+  svg.chart rect.bar{fill:var(--accent);opacity:.85}
+  svg.chart rect.bar:hover{opacity:1}
+  svg.chart.alt rect.bar{fill:var(--accent-2)}
+  svg.chart line{stroke:var(--line)}
+
+  .mode-row{display:grid;grid-template-columns:70px 1fr 44px;align-items:center;gap:10px;margin:8px 0;font-size:.86rem}
+  .track{height:10px;border-radius:99px;background:var(--card-2);overflow:hidden}
+  .track i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+  .mode-row b{text-align:right}
+
+  /* maintenance */
+  .maint{display:grid;gap:10px;margin-bottom:12px}
+  .maint-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .switch{display:inline-flex;align-items:center;gap:10px;font-weight:600}
+  .switch input{appearance:none;width:44px;height:26px;border-radius:99px;background:var(--card-2);border:1px solid var(--line);position:relative;cursor:pointer;transition:.2s}
+  .switch input::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--muted);transition:.2s}
+  .switch input:checked{background:color-mix(in srgb,var(--warn) 35%,transparent);border-color:var(--warn)}
+  .switch input:checked::after{left:20px;background:var(--warn)}
+  .banner{padding:9px 13px;border-radius:12px;background:color-mix(in srgb,var(--warn) 16%,transparent);border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);font-size:.88rem}
+
+  /* users */
+  .tools{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .tools input{flex:1;min-width:180px}
+  .tablewrap{overflow-x:auto;border-radius:12px;border:1px solid var(--line)}
+  table{width:100%;border-collapse:collapse;font-size:.88rem;min-width:620px}
+  th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;position:sticky;top:0;background:var(--card-2);cursor:pointer;user-select:none}
+  tr:last-child td{border-bottom:0}
+  td.name{white-space:normal}
+  td.name .nm{font-weight:700}
+  td.name .id{color:var(--muted);font-size:.74rem;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:.72rem;font-weight:700;border:1px solid var(--line)}
+  .pill.on{color:var(--good);border-color:color-mix(in srgb,var(--good) 50%,transparent)}
+  .pill.blk{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 50%,transparent)}
+  .empty{padding:26px;text-align:center;color:var(--muted)}
+  .foot{color:var(--muted);font-size:.78rem;margin-top:14px;line-height:1.5}
+  .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translate(-50%,20px);opacity:0;pointer-events:none;
+    background:var(--card);border:1px solid var(--line);padding:10px 16px;border-radius:12px;transition:.25s;z-index:9}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+
+<section class="login" id="login">
+  <form class="card" id="login-form" autocomplete="off">
+    <h1>JARVIS Admin</h1>
+    <p>Admin password daalo. Ye wahi hai jo Render ke <b>ADMIN_PASSWORD</b> mein set hai.</p>
+    <input type="password" id="pw" placeholder="Password" autocomplete="current-password" required>
+    <div class="err" id="login-err" role="alert"></div>
+    <button class="btn primary" id="login-btn" type="submit">Login</button>
+  </form>
+</section>
+
+<main class="wrap" id="dash" hidden>
+  <div class="top">
+    <h1><span class="dot" id="srv-dot"></span>JARVIS Admin</h1>
+    <span class="sync" id="sync">—</span>
+    <button class="btn" id="refresh" type="button">Refresh</button>
+    <button class="btn" id="logout" type="button">Logout</button>
+  </div>
+
+  <div class="card maint" id="maint">
+    <div class="maint-row">
+      <label class="switch"><input type="checkbox" id="paused"><span>Maintenance mode (chat band)</span></label>
+    </div>
+    <div class="maint-row">
+      <input type="text" id="pause-msg" maxlength="200" placeholder="Users ko dikhne wala message (optional)">
+      <button class="btn primary sm" id="save-maint" type="button">Save</button>
+    </div>
+    <div class="banner" id="maint-banner" hidden>Maintenance ON hai: abhi koi bhi user chat nahi kar sakta.</div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="grid2">
+    <div class="card"><h2>Messages per day <small id="c1-note"></small></h2><svg class="chart" id="chart-msgs" viewBox="0 0 600 170" role="img" aria-label="Messages per day"></svg></div>
+    <div class="card"><h2>Active users per day <small id="c2-note"></small></h2><svg class="chart alt" id="chart-users" viewBox="0 0 600 170" role="img" aria-label="Active users per day"></svg></div>
+  </div>
+
+  <div class="card" style="margin-bottom:12px"><h2>Modes <small>kis mode mein kitne messages</small></h2><div id="modes"></div></div>
+
+  <div class="card">
+    <h2>Users <small id="user-count"></small></h2>
+    <div class="tools"><input type="search" id="q" placeholder="Naam ya ID se dhundo" autocomplete="off"></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th data-sort="name">User</th><th data-sort="device">Device</th><th data-sort="messages">Messages</th>
+          <th data-sort="first_seen">First seen</th><th data-sort="last_seen">Last seen</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="foot">Yahan sirf anonymous device ID, jo naam user ne khud daala, device type aur messages ki ginti dikhti hai. Chat ka text save nahi hota.
+  "Messages" ka matlab hai kitni baar JARVIS ko request gayi (Regenerate bhi gina jaata hai). Ek user = ek browser/device (alag browser = alag user).</p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+  const API = (new URLSearchParams(location.search).get('api') || 'https://website-1wy5.onrender.com').replace(/\/$/, '');
+  const $ = (id) => document.getElementById(id);
+  let KEY = '';
+  try { KEY = sessionStorage.getItem('jv_admin') || ''; } catch (e) {}
+  let DATA = null, sortKey = 'last_seen', sortDir = -1, timer = 0, loading = false;
+
+  async function api(path, opts = {}) {
+    const r = await fetch(API + path, Object.assign({}, opts, { headers: Object.assign({ 'Content-Type': 'application/json', 'X-Admin-Key': KEY }, opts.headers || {}) }));
+    let data = null; try { data = await r.json(); } catch (e) {}
+    if (!r.ok) { const err = new Error((data && (data.detail || data.error)) || ('HTTP ' + r.status)); err.status = r.status; throw err; }
+    return data;
+  }
+  let toastT;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2200); }
+  function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+  const fmtNum = (n) => Number(n || 0).toLocaleString('en-IN');
+
+  function ago(ts, now) {
+    if (!ts) return '—';
+    const s = Math.max(0, now - ts);
+    if (s < 60) return 'abhi abhi';
+    if (s < 3600) return Math.floor(s / 60) + ' min pehle';
+    if (s < 86400) return Math.floor(s / 3600) + ' ghante pehle';
+    if (s < 86400 * 30) return Math.floor(s / 86400) + ' din pehle';
+    return new Date(ts * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  const fullTime = (ts) => ts ? new Date(ts * 1000).toLocaleString('en-IN') : '';
+
+  function showLogin(msg) {
+    $('dash').hidden = true; $('login').hidden = false; $('login-err').textContent = msg || '';
+    clearInterval(timer); $('pw').focus();
+  }
+  function showDash() { $('login').hidden = true; $('dash').hidden = false; }
+
+  async function load(manual) {
+    if (loading) return; loading = true;
+    const btn = $('refresh'); btn.disabled = true;
+    const slow = setTimeout(() => { $('sync').textContent = 'Server jaag raha hai, thoda ruko…'; }, 6000);
+    try {
+      DATA = await api('/admin/stats?days=14');
+      showDash(); render();
+      $('srv-dot').classList.remove('off');
+      $('sync').textContent = 'Updated ' + new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      if (manual) toast('Refreshed');
+    } catch (err) {
+      if (err.status === 401 || err.status === 429 || err.status === 503) { try { sessionStorage.removeItem('jv_admin'); } catch (e) {} KEY = ''; showLogin(err.message); }
+      else { $('srv-dot').classList.add('off'); $('sync').textContent = 'Server se connect nahi hua'; if (manual || !DATA) toast("Couldn't reach the server"); }
+    } finally { clearTimeout(slow); btn.disabled = false; loading = false; }
+  }
+
+  function render() {
+    const t = DATA.totals, now = DATA.server_time;
+    const cards = [
+      ['Online now', t.online_now, 'live'], ['Active today', t.active_today], ['New users today', t.new_today],
+      ['Messages today', t.messages_today], ['Active (7 days)', t.active_7d], ['Total users', t.users],
+      ['Total messages', t.messages], ['Blocked', t.blocked]
+    ];
+    const box = $('stats'); box.replaceChildren();
+    cards.forEach(([l, n, cls]) => { const c = el('div', 'card stat ' + (cls || '')); c.append(el('div', 'n', fmtNum(n)), el('div', 'l', l)); box.appendChild(c); });
+
+    $('paused').checked = !!DATA.settings.paused;
+    if (document.activeElement !== $('pause-msg')) $('pause-msg').value = DATA.settings.pause_message || '';
+    $('maint-banner').hidden = !DATA.settings.paused;
+
+    barChart($('chart-msgs'), DATA.series, 'messages'); barChart($('chart-users'), DATA.series, 'users');
+    const sum = (k) => DATA.series.reduce((a, d) => a + d[k], 0);
+    $('c1-note').textContent = 'last 14 days: ' + fmtNum(sum('messages'));
+    $('c2-note').textContent = 'peak: ' + fmtNum(Math.max(0, ...DATA.series.map((d) => d.users)));
+
+    const modes = $('modes'); modes.replaceChildren();
+    const entries = Object.entries(DATA.modes).sort((a, b) => b[1] - a[1]);
+    const total = entries.reduce((a, [, n]) => a + n, 0);
+    if (!entries.length) modes.appendChild(el('div', 'empty', 'Abhi koi data nahi'));
+    entries.forEach(([m, n]) => {
+      const row = el('div', 'mode-row'); const tr = el('div', 'track'); const bar = el('i'); bar.style.width = (total ? (n / total) * 100 : 0).toFixed(1) + '%'; tr.appendChild(bar);
+      row.append(el('span', '', m), tr, el('b', '', fmtNum(n))); modes.appendChild(row);
+    });
+    renderUsers();
+  }
+
+  function barChart(svg, series, key) {
+    const NS = 'http://www.w3.org/2000/svg', W = 600, H = 170, padB = 22, padT = 18;
+    svg.replaceChildren();
+    const max = Math.max(1, ...series.map((d) => d[key]));
+    const bw = W / series.length, inner = H - padB - padT;
+    const mk = (n, attrs) => { const e = document.createElementNS(NS, n); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+    svg.appendChild(mk('line', { x1: 0, x2: W, y1: H - padB, y2: H - padB }));
+    series.forEach((d, i) => {
+      const h = d[key] ? Math.max(3, (d[key] / max) * inner) : 0;
+      const g = mk('g', {});
+      const r = mk('rect', { class: 'bar', x: i * bw + bw * 0.18, y: H - padB - h, width: bw * 0.64, height: h, rx: 4 });
+      const tt = document.createElementNS(NS, 'title'); tt.textContent = d.date + ': ' + d[key]; r.appendChild(tt); g.appendChild(r);
+      if (d[key]) { const v = mk('text', { x: i * bw + bw / 2, y: H - padB - h - 3, 'text-anchor': 'middle' }); v.textContent = d[key]; g.appendChild(v); }
+      if (i % 3 === 0 || i === series.length - 1) { const l = mk('text', { x: i * bw + bw / 2, y: H - 6, 'text-anchor': 'middle' }); l.textContent = d.date.slice(8) + '/' + d.date.slice(5, 7); g.appendChild(l); }
+      svg.appendChild(g);
+    });
+  }
+
+  function renderUsers() {
+    const now = DATA.server_time, q = $('q').value.trim().toLowerCase();
+    let list = DATA.users.filter((u) => !q || (u.name || '').toLowerCase().includes(q) || u.client_id.toLowerCase().includes(q));
+    list.sort((a, b) => {
+      const x = a[sortKey], y = b[sortKey];
+      if (typeof x === 'string') return sortDir * String(x || '').localeCompare(String(y || ''));
+      return sortDir * ((x || 0) - (y || 0));
+    });
+    $('user-count').textContent = fmtNum(list.length) + (list.length !== DATA.users.length ? ' of ' + fmtNum(DATA.users.length) : '') + ' users';
+    const body = $('rows'); body.replaceChildren();
+    if (!list.length) { const tr = el('tr'); const td = el('td', 'empty', DATA.users.length ? 'Koi match nahi mila' : 'Abhi koi user nahi. Website use hone ke baad yahan dikhenge.'); td.colSpan = 7; tr.appendChild(td); body.appendChild(tr); return; }
+    list.forEach((u) => {
+      const tr = el('tr');
+      const nameTd = el('td', 'name');
+      nameTd.append(el('div', 'nm', u.name || 'Anonymous'), el('div', 'id', u.client_id.slice(0, 8)));
+      const online = now - u.last_seen < 300;
+      const status = el('td'); const pill = el('span', 'pill ' + (u.blocked ? 'blk' : online ? 'on' : ''), u.blocked ? 'Blocked' : online ? 'Online' : 'Offline'); status.appendChild(pill);
+      const first = el('td', '', ago(u.first_seen, now)); first.title = fullTime(u.first_seen);
+      const last = el('td', '', ago(u.last_seen, now)); last.title = fullTime(u.last_seen);
+      const act = el('td'); const b = el('button', 'btn sm ' + (u.blocked ? '' : 'danger'), u.blocked ? 'Unblock' : 'Block'); b.type = 'button';
+      b.addEventListener('click', () => toggleBlock(u, b)); act.appendChild(b);
+      tr.append(nameTd, el('td', '', u.device || '—'), el('td', '', fmtNum(u.messages)), first, last, status, act);
+      body.appendChild(tr);
+    });
+  }
+
+  async function toggleBlock(u, btn) {
+    const want = !u.blocked;
+    if (want && !confirm('"' + (u.name || 'Anonymous') + '" (' + u.client_id.slice(0, 8) + ') ko block karna hai?\nWo is device se chat nahi kar payega.')) return;
+    btn.disabled = true;
+    try {
+      await api('/admin/block', { method: 'POST', body: JSON.stringify({ client_id: u.client_id, blocked: want }) });
+      u.blocked = want; DATA.totals.blocked += want ? 1 : -1; render(); toast(want ? 'Blocked' : 'Unblocked');
+    } catch (err) { toast(err.message || 'Failed'); btn.disabled = false; }
+  }
+
+  $('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    KEY = $('pw').value; if (!KEY) return;
+    $('login-btn').disabled = true; $('login-err').textContent = '';
+    try { sessionStorage.setItem('jv_admin', KEY); } catch (err) {}
+    await load(false);
+    $('login-btn').disabled = false; $('pw').value = '';
+    if (!$('dash').hidden) startTimer();
+  });
+  $('refresh').addEventListener('click', () => load(true));
+  $('logout').addEventListener('click', () => { try { sessionStorage.removeItem('jv_admin'); } catch (e) {} KEY = ''; DATA = null; showLogin(''); });
+  $('q').addEventListener('input', () => DATA && renderUsers());
+  document.querySelectorAll('th[data-sort]').forEach((th) => th.addEventListener('click', () => {
+    const k = th.dataset.sort; if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = k === 'name' || k === 'device' ? 1 : -1; }
+    if (DATA) renderUsers();
+  }));
+  $('save-maint').addEventListener('click', async () => {
+    try {
+      await api('/admin/settings', { method: 'POST', body: JSON.stringify({ paused: $('paused').checked, pause_message: $('pause-msg').value }) });
+      DATA.settings.paused = $('paused').checked; DATA.settings.pause_message = $('pause-msg').value;
+      $('maint-banner').hidden = !DATA.settings.paused; toast($('paused').checked ? 'Maintenance ON' : 'Saved');
+    } catch (err) { toast(err.message || 'Failed'); }
+  });
+  function startTimer() { clearInterval(timer); timer = setInterval(() => { if (document.visibilityState === 'visible') load(false); }, 30000); }
+
+  if (KEY) { load(false).then(() => { if (!$('dash').hidden) startTimer(); }); } else showLogin('');
+})();
+</script>
+</body>
+</html>
