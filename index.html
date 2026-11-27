@@ -735,6 +735,110 @@
     .action-divider { display:none; }
   }
 
+  /* ===== JARVIS V6: light-theme repair + mobile polish ===== */
+  /* Tip card */
+  .prose p.tip { display:flex; gap:10px; align-items:flex-start; padding:10px 13px; border-radius:13px;
+    background:color-mix(in srgb, var(--accent) 10%, transparent);
+    border:1px solid color-mix(in srgb, var(--accent) 30%, transparent); font-size:.94em; line-height:1.5; }
+  .prose p.tip b { flex:none; padding:3px 7px; border-radius:7px; font-size:.68em; letter-spacing:.12em; text-transform:uppercase;
+    background:color-mix(in srgb, var(--accent) 22%, transparent); color:var(--accent); margin-top:1px; }
+  .prose p.tip span { min-width:0; }
+
+  /* Action row: icons only for feedback, compact everywhere */
+  .msg-actions { gap:6px; }
+  .msg-actions .feedback-btn > span:last-child { display:none; }
+  .msg-actions .feedback-btn { padding:6px 10px; }
+  .msg-actions .chip-btn { font-size:.8rem; }
+  @media (max-width:480px) {
+    .msg-actions .chip-btn:not(.feedback-btn) > span { display:none; }
+    .msg-actions .chip-btn { min-height:36px; min-width:38px; padding:6px 10px; justify-content:center; }
+    .msg-actions { gap:6px; }
+    .action-divider { display:block; height:18px; margin:0 1px; }
+    .hero-chips { flex-wrap:nowrap; gap:6px; }
+    .hero-chips span { padding:6px 9px; font-size:.7rem; gap:5px; }
+    .hero-chips .chip-mark { display:none; }
+  }
+  @media (max-width:390px) {
+    .prompt { min-height:58px; padding:10px 28px 10px 10px; font-size:.82rem; }
+    .prompt .p-ic { flex-basis:32px; width:32px; height:32px; }
+    .prompts { gap:8px; }
+    .hero-orb { width:96px; height:96px; }
+    .hero-orb .avatar.lg { width:74px; height:74px; }
+    .empty { gap:8px; }
+    .empty h2 { font-size:clamp(1.6rem,7vw,2rem); }
+  }
+
+  /* Light theme: V4 layer had dark colours hardcoded, so repair them */
+  html[data-theme="light"] {
+    --glass:rgba(255,255,255,.8); --glass-2:rgba(240,247,253,.8);
+    --brd:rgba(28,117,158,.18); --shadow:0 22px 60px rgba(15,35,70,.14);
+    --accent:#087fa8; --accent-2:#4d9fd2; --focus:rgba(8,127,168,.18);
+  }
+  html[data-theme="light"], html[data-theme="light"] body { background:#e9f1fa; }
+  html[data-theme="light"] body {
+    background:radial-gradient(ellipse at 50% -18%,rgba(70,170,220,.24),transparent 50%),
+      radial-gradient(ellipse at 100% 90%,rgba(120,150,240,.16),transparent 45%),
+      linear-gradient(145deg,#f5f9fd 0%,#e9f1fa 55%,#f2f7fc 100%);
+  }
+  html[data-theme="light"] body::before {
+    opacity:.55;
+    background:linear-gradient(rgba(30,100,150,.05) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(30,100,150,.05) 1px,transparent 1px);
+    background-size:42px 42px;
+    mask-image:linear-gradient(to bottom,black,transparent 88%);
+  }
+  html[data-theme="light"] body::after { display:none; }
+  html[data-theme="light"] .sidebar, html[data-theme="light"] .main {
+    border-color:rgba(28,117,158,.18);
+    background:linear-gradient(155deg,rgba(255,255,255,.9),rgba(238,246,253,.88));
+    box-shadow:0 20px 60px rgba(15,35,70,.12),inset 0 1px 0 rgba(255,255,255,.95);
+  }
+  html[data-theme="light"] .side-top { border-bottom-color:rgba(28,117,158,.14); }
+  html[data-theme="light"] .side-foot { color:#5d7289; border-top-color:rgba(28,117,158,.14); }
+  html[data-theme="light"] .search { background:rgba(255,255,255,.75); border-color:rgba(28,117,158,.18); }
+  html[data-theme="light"] .hist-item.active { border-color:rgba(8,127,168,.28); background:linear-gradient(100deg,rgba(8,127,168,.13),rgba(8,127,168,.03)); box-shadow:inset 3px 0 0 var(--accent); }
+  html[data-theme="light"] .topbar { background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,255,255,.25)); border-bottom-color:rgba(28,117,158,.13); }
+  html[data-theme="light"] .icon-btn:hover, html[data-theme="light"] .text-btn:hover { background:rgba(8,127,168,.09); border-color:rgba(8,127,168,.16); }
+  html[data-theme="light"] .messages { background:radial-gradient(65% 46% at 50% 0%,rgba(70,170,220,.1),transparent 75%); }
+  html[data-theme="light"] .msg-bot .prose { color:var(--text); }
+  html[data-theme="light"] .msg-bot .avatar { box-shadow:0 0 0 1px rgba(8,127,168,.3),0 6px 18px rgba(8,127,168,.14); }
+  html[data-theme="light"] .typing { background:rgba(255,255,255,.88); border-color:rgba(28,117,158,.18); }
+  html[data-theme="light"] .composer { background:linear-gradient(0deg,rgba(233,241,250,.95),rgba(233,241,250,0)); }
+  html[data-theme="light"] .field { background:rgba(255,255,255,.95); border-color:rgba(28,117,158,.22); box-shadow:0 14px 36px rgba(15,35,70,.1),inset 0 1px 0 #fff; }
+  html[data-theme="light"] .field textarea::placeholder { color:#6a7f96; }
+  html[data-theme="light"] .foot-note { color:#5d7289; }
+  html[data-theme="light"] .send { color:#fff; background:linear-gradient(140deg,#0a8fbd,#4d9fd2); box-shadow:0 8px 22px rgba(8,127,168,.28); }
+  html[data-theme="light"] .send:disabled { background:rgba(8,127,168,.14); color:#6a8aa0; box-shadow:none; }
+  html[data-theme="light"] .btn-primary { color:#fff; background:linear-gradient(115deg,#0a8fbd,#4d9fd2 72%,#6b8fe0); box-shadow:0 10px 26px rgba(8,127,168,.22); }
+  html[data-theme="light"] .wordmark em { color:#fff; background:linear-gradient(135deg,#0a8fbd,#4d9fd2); box-shadow:0 4px 14px rgba(8,127,168,.25); }
+  html[data-theme="light"] .empty::before { background:radial-gradient(ellipse,rgba(70,170,220,.2),rgba(70,150,220,.06) 44%,transparent 72%); }
+  html[data-theme="light"] .hero-status { border-color:rgba(28,117,158,.2); background:rgba(255,255,255,.7); color:#4d6882; }
+  html[data-theme="light"] .hero-status b { color:#0b8f6a; }
+  html[data-theme="light"] .hero-status .status-dot { background:#14b88a; box-shadow:0 0 10px rgba(20,184,138,.6); }
+  html[data-theme="light"] .hero-status i { background:#8aa3b8; }
+  html[data-theme="light"] .hero-orb .avatar.lg { border-color:rgba(8,127,168,.4); box-shadow:0 0 0 7px rgba(8,127,168,.06),0 0 36px rgba(8,127,168,.2); }
+  html[data-theme="light"] .empty h2 { color:var(--text); text-shadow:none; }
+  html[data-theme="light"] .empty p { color:var(--muted); }
+  html[data-theme="light"] .hero-chips span { border-color:rgba(28,117,158,.18); background:rgba(255,255,255,.7); color:#4d6882; box-shadow:none; }
+  html[data-theme="light"] .hero-chips .chip-mark { color:var(--accent); }
+  html[data-theme="light"] .prompt-heading { color:#587289; }
+  html[data-theme="light"] .prompt-heading span:last-child { color:#6a8196; }
+  html[data-theme="light"] .prompt-heading i { color:var(--accent); }
+  html[data-theme="light"] .prompt { border-color:rgba(28,117,158,.18); background:linear-gradient(145deg,rgba(255,255,255,.92),rgba(240,247,253,.85)); color:var(--text); box-shadow:0 6px 18px rgba(15,35,70,.06); }
+  html[data-theme="light"] .prompt:hover { border-color:rgba(8,127,168,.45); background:linear-gradient(145deg,#fff,rgba(232,244,252,.95)); box-shadow:0 14px 30px rgba(15,35,70,.12); }
+  html[data-theme="light"] .prompt .p-ic { color:var(--accent); border-color:rgba(8,127,168,.25); background:rgba(8,127,168,.09); }
+  html[data-theme="light"] .prompt-arrow { color:#4d9fd2; }
+  html[data-theme="light"] .codeblock { border-color:rgba(28,117,158,.22); background:#fff; }
+  html[data-theme="light"] .codehead { background:rgba(230,239,248,.95); color:#3d566e; }
+  html[data-theme="light"] .codehead span { color:#51697f; }
+  html[data-theme="light"] .codeblock pre, html[data-theme="light"] .codeblock pre code { background:#f8fbfe; color:#1b2b40; }
+  html[data-theme="light"] .msg-actions .chip-btn { border-color:rgba(28,117,158,.16); background:rgba(255,255,255,.75); color:#4d6882; }
+  html[data-theme="light"] .msg-actions .chip-btn:hover { color:#0b5f80; border-color:rgba(8,127,168,.35); background:rgba(8,127,168,.09); }
+  html[data-theme="light"] .msg-actions .feedback-btn.is-active { color:#07739b; border-color:rgba(8,127,168,.4); background:rgba(8,127,168,.12); box-shadow:none; }
+  html[data-theme="light"] .msg-actions .feedback-btn[data-feedback="down"].is-active { color:#b4382a; border-color:rgba(196,60,60,.38); background:rgba(196,60,60,.09); }
+  html[data-theme="light"] .action-divider { background:rgba(28,117,158,.2); }
+
+  @media (max-width:480px) and (min-height:780px) { .prompt:nth-child(n+4) { display:flex; } }
 </style>
 </head>
 <body>
@@ -875,7 +979,7 @@
   const LOGO_URL  = "logo.png";
   const STORE_KEY = 'jarvis_multi_chats';   
   const THEME_KEY = 'jarvis_theme';
-  const GREETING  = "Namaste, sir. Main JARVIS hoon. Aaj main aapki kya madad kar sakta hoon?";
+  const GREETING  = "Namaste! Main JARVIS hoon. Aaj main aapki kya madad kar sakta hoon?";
   const REQUEST_TIMEOUT_MS = 60000;
   // Suggestions ka pool (har baar naye wale uthayega)
 const ALL_PROMPTS = [
@@ -1056,7 +1160,16 @@ function getRandomPrompts(count = 4) {
       out += '<div class="tblwrap"><table>' + (head ? '<thead><tr>' + head.map(c => `<th>${inlineFormat(c)}</th>`).join('') + '</tr></thead>' : '') +
         '<tbody>' + body.map(r => '<tr>' + r.map(c => `<td>${inlineFormat(c)}</td>`).join('') + '</tr>').join('') + '</tbody></table></div>';
     };
-    const flushPara = () => { flushTable(); if (para.length) { out += '<p>' + para.map(inlineFormat).join('<br>') + '</p>'; para = []; } };
+    const flushPara = () => {
+      flushTable();
+      if (!para.length) return;
+      const tipRe = /^\s*Tip\s*:-?\s*/i;
+      if (tipRe.test(para[0])) {
+        para[0] = para[0].replace(tipRe, '');
+        out += '<p class="tip"><b>Tip</b><span>' + para.map(inlineFormat).join('<br>') + '</span></p>';
+      } else out += '<p>' + para.map(inlineFormat).join('<br>') + '</p>';
+      para = [];
+    };
     const flushList = () => { flushTable(); if (list) { out += `<${list.t}>` + list.items.map(i => `<li>${inlineFormat(i)}</li>`).join('') + `</${list.t}>`; list = null; } };
 
     for (const line of text.split('\n')) {
@@ -1157,9 +1270,9 @@ function getRandomPrompts(count = 4) {
         }
       }
       const actions = document.createElement('div'); actions.className = 'msg-actions';
-      actions.innerHTML = `<button class="chip-btn" type="button" data-copy-msg>${icon('copy')}<span>Copy</span></button>` +
-        `<button class="chip-btn" type="button" data-speak>${icon('speaker')}<span>Listen</span></button>` +
-        `<button class="chip-btn" type="button" data-regen>${icon('retry')}<span>Regenerate</span></button>` +
+      actions.innerHTML = `<button class="chip-btn" type="button" data-copy-msg aria-label="Copy reply" title="Copy">${icon('copy')}<span>Copy</span></button>` +
+        `<button class="chip-btn" type="button" data-speak aria-label="Listen" title="Listen">${icon('speaker')}<span>Listen</span></button>` +
+        `<button class="chip-btn" type="button" data-regen aria-label="Regenerate reply" title="Regenerate">${icon('retry')}<span>Regenerate</span></button>` +
         `<span class="action-divider" aria-hidden="true"></span>` +
         `<button class="chip-btn feedback-btn ${msg.feedback === 'up' ? 'is-active' : ''}" type="button" data-feedback="up" aria-label="Helpful" aria-pressed="${msg.feedback === 'up'}" title="Helpful">👍<span>Helpful</span></button>` +
         `<button class="chip-btn feedback-btn ${msg.feedback === 'down' ? 'is-active' : ''}" type="button" data-feedback="down" aria-label="Not helpful" aria-pressed="${msg.feedback === 'down'}" title="Not helpful">👎<span>Not helpful</span></button>`;
@@ -1212,7 +1325,8 @@ function getRandomPrompts(count = 4) {
     else chat.messages.forEach(m => thread.appendChild(buildMessage(m, false)));
     updateTyping();
     updateHeader();
-    scrollToBottom(false);
+    if (!chat || chat.messages.length === 0) messagesEl.scrollTop = 0;
+    else scrollToBottom(false);
   }
 
   async function appendMessage(msg) {
@@ -1383,14 +1497,15 @@ function getRandomPrompts(count = 4) {
   function pushMessage(chatId, role, content) {
     const chat = getChat(chatId);
     if (!chat) return false;
-    chat.messages.push({ role, content });
+    const stored = { role, content };
+    chat.messages.push(stored);
     if (role === 'user' && chat.messages.length === 1) {
       chat.title = content.substring(0, 25) + (content.length > 25 ? '...' : '');
       renderHistoryList();
       updateHeader();
     }
     saveSoon();
-    return true;
+    return stored;
   }
 
   function autosize() {
@@ -1461,8 +1576,8 @@ function getRandomPrompts(count = 4) {
       try { data = await response.json(); } catch (e) { }
       
       if (data && data.reply) {
-        pushMessage(chatId, 'bot', String(data.reply));
-        if (chatId === currentChatId) appendMessage({ role: 'bot', content: String(data.reply) });
+        const storedReply = pushMessage(chatId, 'bot', String(data.reply));
+        if (chatId === currentChatId) appendMessage(storedReply || { role: 'bot', content: String(data.reply) });
         if (voiceOn) voiceSpeak(String(data.reply)); else if (S.autoread === 'on') say(String(data.reply));
       } else if (chatId === currentChatId) {
         if (data && data.error) showError(String(data.error), '', retry);
@@ -1509,7 +1624,7 @@ function getRandomPrompts(count = 4) {
     if (msgBtn) {
       const raw = msgBtn.closest('.msg')._raw || '';
       const ok = await copyText(raw);
-      if (ok) flashCopied(msgBtn); else toast("Couldn't copy");
+      if (ok) { flashCopied(msgBtn); toast('Copied'); } else toast("Couldn't copy");
       return;
     }
     const feedbackBtn = e.target.closest('[data-feedback]');
@@ -1610,9 +1725,9 @@ function getRandomPrompts(count = 4) {
     const finish = () => {
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
       if (!acc) return;
-      pushMessage(chatId, 'bot', acc);
-      if (el && el.isConnected) { shown = acc.length; draw(acc); el.classList.remove('streaming', 'revealing'); el._raw = acc; }
-      else if (chatId === currentChatId) appendMessage({ role: 'bot', content: acc });
+      const storedBot = pushMessage(chatId, 'bot', acc);
+      if (el && el.isConnected) { shown = acc.length; draw(acc); el.classList.remove('streaming', 'revealing'); el._raw = acc; if (storedBot) el._message = storedBot; }
+      else if (chatId === currentChatId) appendMessage(storedBot || { role: 'bot', content: acc });
       if (voiceOn) voiceSpeak(acc); else if (S.autoread === 'on') say(acc);
     };
     const reader = res.body.getReader(), dec = new TextDecoder();
