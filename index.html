@@ -245,6 +245,31 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   }
+
+  /* ---- polish layer ---- */
+  body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: radial-gradient(60% 45% at 85% -8%, color-mix(in srgb, var(--accent) 17%, transparent), transparent 70%),
+                radial-gradient(50% 40% at -5% 105%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%); }
+  .app { position: relative; z-index: 1; }
+  .topbar { background: color-mix(in srgb, var(--bg) 72%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  .orb { width: 112px; height: 112px; box-shadow: 0 0 70px color-mix(in srgb, var(--accent) 32%, transparent); animation: breathe 4.5s ease-in-out infinite; }
+  .avatar.lg { width: 88px; height: 88px; }
+  @keyframes breathe { 50% { box-shadow: 0 0 100px color-mix(in srgb, var(--accent) 50%, transparent); } }
+  .bubble { background: linear-gradient(135deg, var(--user-bg), color-mix(in srgb, var(--user-bg) 72%, var(--accent))); box-shadow: 0 6px 18px color-mix(in srgb, var(--user-bg) 35%, transparent); }
+  .msg-bot > .avatar { box-shadow: 0 0 0 1px var(--line), 0 0 16px color-mix(in srgb, var(--accent) 25%, transparent); }
+  .field { background: color-mix(in srgb, var(--surface) 86%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: var(--shadow); padding-left: 20px; }
+  .send { background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #8a6bff)); }
+  .send:disabled { background: var(--surface-2); }
+  .send.stop { background: var(--text); color: var(--bg); }
+  .mic { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; color: var(--muted); flex: none; transition: background .15s, color .15s; }
+  .mic:hover { background: var(--surface-2); color: var(--text); }
+  .mic.listening { background: var(--danger); color: #fff; animation: rec 1.2s ease-in-out infinite; }
+  @keyframes rec { 50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--danger) 25%, transparent); } }
+  .prompt { box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 12%, transparent); }
+  .prompt:hover { transform: translateY(-2px); box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 14%, transparent); }
+  .msg-bot:not(:last-child) [data-regen] { display: none; }
+  .chip-btn[data-on] { color: var(--accent); }
+  .sidebar { background: color-mix(in srgb, var(--surface) 92%, transparent); }
 </style>
 </head>
 <body>
@@ -263,6 +288,10 @@
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
   <symbol id="i-retry" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0114-5.3L20 9M20 4v5h-5M20 12a8 8 0 01-14 5.3L4 15M4 20v-5h5"/></symbol>
   <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></symbol>
+  <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zM17 8.5a5 5 0 010 7"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></symbol>
 </svg>
 
 <div class="app" id="app">
@@ -289,6 +318,7 @@
       <span class="avatar sm mobile-brand" id="top-avatar" aria-hidden="true"></span>
       <h1 class="chat-title" id="chat-title">New Chat</h1>
       <button class="text-btn" id="clear-btn" type="button" aria-label="Clear this chat"><svg class="ic"><use href="#i-eraser"/></svg><span>Clear</span></button>
+      <button class="icon-btn" id="export-btn" type="button" aria-label="Download this chat" title="Download chat"><svg class="ic"><use href="#i-download"/></svg></button>
       <button class="icon-btn" id="theme-btn" type="button" aria-label="Switch theme"><svg class="ic" id="theme-icon"><use href="#i-sun"/></svg></button>
     </header>
 
@@ -309,6 +339,7 @@
         <div class="field">
           <label class="sr-only" for="user-input">Message JARVIS</label>
           <textarea id="user-input" rows="1" placeholder="Message JARVIS…" enterkeyhint="send" autocomplete="off"></textarea>
+          <button class="mic" id="mic-btn" type="button" aria-label="Speak your message" title="Bol kar likhein"><svg class="ic"><use href="#i-mic"/></svg></button>
           <button class="send" id="send-btn" type="button" aria-label="Send message" disabled><svg class="ic"><use href="#i-send"/></svg></button>
         </div>
         <p class="foot-note">JARVIS can make mistakes. Please verify important information.</p>
@@ -383,6 +414,7 @@ function getRandomPrompts(count = 4) {
   let currentChatId = null;
   let busy = false;
   let pendingChatId = null;
+  let activeController = null, stoppedByUser = false;
 
   function loadChats() {
     try {
@@ -582,7 +614,9 @@ function getRandomPrompts(count = 4) {
         }
       }
       const actions = document.createElement('div'); actions.className = 'msg-actions';
-      actions.innerHTML = `<button class="chip-btn" type="button" data-copy-msg>${icon('copy')}<span>Copy</span></button>`;
+      actions.innerHTML = `<button class="chip-btn" type="button" data-copy-msg>${icon('copy')}<span>Copy</span></button>` +
+        `<button class="chip-btn" type="button" data-speak>${icon('speaker')}<span>Listen</span></button>` +
+        `<button class="chip-btn" type="button" data-regen>${icon('retry')}<span>Regenerate</span></button>`;
       col.append(body, actions);
       el.appendChild(col);
       el._raw = msg.content;
@@ -793,7 +827,14 @@ function getRandomPrompts(count = 4) {
   function autosize() {
     input.style.height = 'auto';
     input.style.height = Math.min(input.scrollHeight, 160) + 'px';
-    sendBtn.disabled = busy || !input.value.trim();
+    sendBtn.disabled = !busy && !input.value.trim();
+    const mode = busy ? 'stop' : 'send';
+    if (sendBtn.dataset.mode !== mode) {
+      sendBtn.dataset.mode = mode;
+      sendBtn.classList.toggle('stop', busy);
+      sendBtn.innerHTML = `<svg class="ic"><use href="#i-${mode}"/></svg>`;
+      sendBtn.setAttribute('aria-label', busy ? 'Stop generating' : 'Send message');
+    }
   }
 
   // FIX: Assistant use kiya hai
@@ -826,12 +867,13 @@ function getRandomPrompts(count = 4) {
     const chat = getChat(chatId);
     if (!chat) return;
     busy = true; pendingChatId = chatId;
-    sendBtn.disabled = true;
+    autosize();
     clearError();
     updateTyping();
 
     const history = chat.messages.slice(-7, -1).map(sanitizeForServer).filter(m => m.content);
     const controller = new AbortController();
+    activeController = controller;
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     const hintId = setTimeout(() => { typingText.textContent = 'Server is waking up, this can take up to a minute…'; }, 8000);
     const retry = () => { clearError(); requestReply(chatId, text); };
@@ -854,7 +896,8 @@ function getRandomPrompts(count = 4) {
         else showError("The server didn't send a reply.", data ? JSON.stringify(data).slice(0, 200) : 'HTTP ' + response.status, retry);
       }
     } catch (err) {
-      if (chatId === currentChatId) {
+      if (stoppedByUser) { stoppedByUser = false; toast('Stopped'); }
+      else if (chatId === currentChatId) {
         const timedOut = err && err.name === 'AbortError';
         showError(
           timedOut ? 'The server took too long to respond.' : "Couldn't reach the server.",
@@ -875,7 +918,10 @@ function getRandomPrompts(count = 4) {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendMessage(); }
   });
-  sendBtn.addEventListener('click', () => sendMessage());
+  sendBtn.addEventListener('click', () => {
+    if (busy) { stoppedByUser = true; if (activeController) activeController.abort(); }
+    else sendMessage();
+  });
   newChatBtn.addEventListener('click', createNewChat);
   clearBtn.addEventListener('click', clearCurrentChat);
 
@@ -893,6 +939,10 @@ function getRandomPrompts(count = 4) {
       if (ok) flashCopied(msgBtn); else toast("Couldn't copy");
       return;
     }
+    const speakBtn = e.target.closest('[data-speak]');
+    if (speakBtn) { speak(speakBtn); return; }
+    const regenBtn = e.target.closest('[data-regen]');
+    if (regenBtn) { regenerate(); return; }
     const prompt = e.target.closest('[data-prompt]');
     if (prompt) sendMessage(prompt.dataset.prompt);
   });
@@ -939,6 +989,71 @@ function getRandomPrompts(count = 4) {
     img.onerror = () => { img.remove(); slot.textContent = 'J'; };
     slot.appendChild(img);
   });
+
+  function speak(btn) {
+    if (!('speechSynthesis' in window)) { toast('Is browser mein voice support nahi hai'); return; }
+    const ss = window.speechSynthesis;
+    if (ss.speaking) { ss.cancel(); if (btn.dataset.on) { delete btn.dataset.on; return; } }
+    const raw = btn.closest('.msg')._raw || '';
+    const t = raw.replace(/```[\s\S]*?```/g, ' code block ').replace(/[*_`#>]/g, '');
+    const u = new SpeechSynthesisUtterance(t);
+    u.lang = /[\u0900-\u097F]/.test(t) ? 'hi-IN' : 'en-IN';
+    u.onend = u.onerror = () => { delete btn.dataset.on; };
+    btn.dataset.on = '1';
+    ss.speak(u);
+  }
+
+  function regenerate() {
+    if (busy) return;
+    const chat = getChat();
+    if (!chat || !chat.messages.length) return;
+    const last = chat.messages[chat.messages.length - 1];
+    if (last.role === 'user') return;
+    chat.messages.pop();
+    if (thread.lastElementChild) thread.lastElementChild.remove();
+    const prev = chat.messages[chat.messages.length - 1];
+    persist();
+    if (prev) requestReply(chat.id, prev.content);
+  }
+
+  const micBtn = $('mic-btn');
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) micBtn.hidden = true;
+  else {
+    let rec = null, on = false, base = '';
+    micBtn.addEventListener('click', () => {
+      if (on) { rec.stop(); return; }
+      rec = new SR();
+      rec.lang = 'hi-IN'; rec.interimResults = true; rec.continuous = false;
+      base = input.value.trim() ? input.value.trim() + ' ' : '';
+      rec.onstart = () => { on = true; micBtn.classList.add('listening'); };
+      rec.onresult = (e) => { let t = ''; for (const r of e.results) t += r[0].transcript; input.value = base + t; autosize(); };
+      rec.onerror = (e) => { if (e.error === 'not-allowed') toast('Mic ki permission do'); };
+      rec.onend = () => { on = false; micBtn.classList.remove('listening'); input.focus(); };
+      try { rec.start(); } catch (err) {}
+    });
+  }
+
+  $('export-btn').addEventListener('click', () => {
+    const c = getChat();
+    if (!c || !c.messages.length) { toast('Chat khaali hai'); return; }
+    const txt = c.messages.map(m => (m.role === 'user' ? 'You' : 'JARVIS') + ': ' + m.content).join('\n\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
+    a.download = (c.title || 'chat').replace(/[^\w-]+/g, '_') + '.txt';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      if (!desktopMQ.matches) openSidebar();
+      searchEl.focus();
+    }
+  });
+  window.addEventListener('offline', () => toast('Internet band hai'));
+  window.addEventListener('online', () => toast('Wapas online'));
 
   applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
   syncSidebarA11y();
