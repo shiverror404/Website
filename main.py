@@ -127,7 +127,7 @@ def fail(message: str, status: int = 502):
 @app.get("/")
 @app.get("/health")
 def health():
-    return {"status": "ok", "bot": BOT_NAME}
+    return {"status": "ok", "bot": BOT_NAME, "stream": True}
 
 MODE_NOTES = {
     "study": "STUDY MODE: explain step by step like a patient teacher, with one simple example. Use plain numbering like 1. 2. 3. for steps.",
@@ -211,14 +211,16 @@ def chat_stream(req: ChatRequest):
     payload, mode = build_payload(req)
     payload["model"] = DEFAULT_MODEL
     payload["stream"] = True
-    auth = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    auth = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json",
+            "Accept": "text/event-stream", "Accept-Encoding": "identity"}
 
     def gen():
         got = False
+        yield ": " + " " * 2048 + "\n\n"  # proxy buffer ko kholne ke liye
         try:
             with http.post(GROQ_URL, headers=auth, json=payload, stream=True, timeout=(10, 60)) as r:
                 r.raise_for_status()
-                for raw in r.iter_lines():
+                for raw in r.iter_lines(chunk_size=16):
                     if not raw:
                         continue
                     line = raw.decode("utf-8", "ignore")

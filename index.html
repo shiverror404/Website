@@ -1010,7 +1010,7 @@ function getRandomPrompts(count = 4) {
       }
     } finally {
       clearTimeout(timeoutId); clearTimeout(hintId);
-      busy = false; pendingChatId = null;
+      busy = false; pendingChatId = null; stoppedByUser = false;
       updateTyping();
       autosize();
       if (window.matchMedia('(pointer: fine)').matches) input.focus();
@@ -1103,18 +1103,29 @@ function getRandomPrompts(count = 4) {
     if (!res.ok || !res.body) return false;
 
     let acc = '', el = null, body = null, raf = 0, err = '';
+    let shown = 0, drainRes = null;
+    const draw = (txt) => {
+      if (!body) return;
+      const open = (txt.match(/```/g) || []).length % 2;
+      body.innerHTML = renderMarkdown(open ? txt + '\n```' : txt);
+      if (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 160) messagesEl.scrollTop = messagesEl.scrollHeight;
+    };
+    // Groq itna tez hai ki chunks ek saath aate hain, isliye text ko smooth typing ki tarah dikhate hain
     const paint = () => {
       raf = 0;
-      if (!body) return;
-      const open = (acc.match(/```/g) || []).length % 2;
-      body.innerHTML = renderMarkdown(open ? acc + '\n```' : acc);
-      if (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 160) messagesEl.scrollTop = messagesEl.scrollHeight;
+      const pending = acc.length - shown;
+      if (pending > 0) {
+        shown = reduceMotion ? acc.length : Math.min(acc.length, shown + Math.max(2, Math.ceil(pending / 24)));
+        draw(acc.slice(0, shown));
+      }
+      if (shown < acc.length) raf = requestAnimationFrame(paint);
+      else if (drainRes) { drainRes(); drainRes = null; }
     };
     const finish = () => {
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
       if (!acc) return;
       pushMessage(chatId, 'bot', acc);
-      if (el && el.isConnected) { paint(); el.classList.remove('streaming', 'revealing'); el._raw = acc; }
+      if (el && el.isConnected) { shown = acc.length; draw(acc); el.classList.remove('streaming', 'revealing'); el._raw = acc; }
       else if (chatId === currentChatId) appendMessage({ role: 'bot', content: acc });
       if (S.autoread === 'on') say(acc);
     };
@@ -1148,6 +1159,13 @@ function getRandomPrompts(count = 4) {
         }
       }
     } catch (e) { finish(); throw e; }
+    if (shown < acc.length && el && el.isConnected) {
+      await new Promise((res) => {
+        drainRes = res;
+        signal.addEventListener('abort', () => { if (drainRes) { drainRes(); drainRes = null; } }, { once: true });
+        if (!raf) raf = requestAnimationFrame(paint);
+      });
+    }
     finish();
     if (err && !acc && chatId === currentChatId) showError(err, '', () => { clearError(); requestReply(chatId, text); });
     else if (err) toast('Reply adhura reh gaya');
