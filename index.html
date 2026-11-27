@@ -29,6 +29,8 @@
       }
       document.documentElement.setAttribute('data-theme', t);
       document.getElementById('meta-theme').setAttribute('content', t === 'light' ? '#f3f6fb' : '#0a111d');
+      var st = JSON.parse(localStorage.getItem('jarvis_settings') || '{}');
+      if (st.accent && st.accent !== 'cyan') document.documentElement.setAttribute('data-accent', st.accent);
     } catch (e) {}
   })();
 </script>
@@ -437,9 +439,55 @@
     .prompt:nth-child(n+4) { display: none; }
     .topbar .mobile-brand { display: none; }
   }
+
+  /* ===== accents, living orb, voice, splash ===== */
+  html[data-accent="violet"] { --accent: #a78bfa; --accent-2: #38bdf8; --user-bg: #4b3a9c; --focus: rgba(167, 139, 250, 0.22); }
+  html[data-accent="emerald"] { --accent: #34d399; --accent-2: #22d3ee; --user-bg: #0e6a50; --focus: rgba(52, 211, 153, 0.22); }
+  html[data-accent="orange"] { --accent: #fb923c; --accent-2: #f472b6; --user-bg: #98470f; --focus: rgba(251, 146, 60, 0.22); }
+  html[data-accent="pink"] { --accent: #f472b6; --accent-2: #a78bfa; --user-bg: #962a62; --focus: rgba(244, 114, 182, 0.22); }
+  html[data-theme="light"][data-accent="violet"] { --accent: #6d4fe0; --accent-2: #0891b2; --user-bg: #5b3fd0; --focus: rgba(109, 79, 224, 0.18); }
+  html[data-theme="light"][data-accent="emerald"] { --accent: #047857; --accent-2: #0e7490; --user-bg: #047857; --focus: rgba(4, 120, 87, 0.18); }
+  html[data-theme="light"][data-accent="orange"] { --accent: #c2410c; --accent-2: #be185d; --user-bg: #c2410c; --focus: rgba(194, 65, 12, 0.18); }
+  html[data-theme="light"][data-accent="pink"] { --accent: #be185d; --accent-2: #6d28d9; --user-bg: #be185d; --focus: rgba(190, 24, 93, 0.18); }
+  .seg.swatch { background: none; border: 0; padding: 2px; gap: 12px; }
+  .seg.swatch button { flex: none; width: 34px; height: 34px; padding: 0; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25); }
+  .seg.swatch button[aria-pressed="true"] { background: var(--c); box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--c); }
+  .txt { width: 100%; padding: 11px 14px; border-radius: 12px; background: var(--glass-2); border: 1px solid var(--brd); outline: 0; font-size: 16px; }
+  .txt:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus); }
+  dialog { max-height: min(88dvh, 660px); overflow-y: auto; }
+
+  html[data-orb="thinking"] .orb::before { animation-duration: 1.1s; }
+  html[data-orb="thinking"] .orb:not(.mini) { box-shadow: 0 0 120px color-mix(in srgb, var(--accent) 45%, transparent); }
+  html[data-orb="listening"] .orb::before { animation-duration: 3s; }
+  html[data-orb="listening"] .orb:not(.mini), html[data-orb="speaking"] .orb:not(.mini) { animation: orbPulse 1.2s ease-in-out infinite; }
+  html[data-orb="speaking"] .orb:not(.mini) { animation-duration: 0.7s; }
+  html[data-orb] .brand .avatar { animation: orbPulse 1.3s ease-in-out infinite; }
+  @keyframes orbPulse { 50% { transform: scale(1.07); box-shadow: 0 0 130px color-mix(in srgb, var(--accent) 50%, transparent); } }
+
+  .voice { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 24px; text-align: center; background: radial-gradient(60% 50% at 50% 38%, color-mix(in srgb, var(--accent) 16%, var(--bg)), var(--bg) 78%); animation: vin .35s var(--ease); }
+  @keyframes vin { from { opacity: 0; transform: scale(1.04); } }
+  .voice-x { position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 14px; width: 44px; height: 44px; }
+  .vorb { width: 210px; height: 210px; margin-bottom: 14px; cursor: pointer; }
+  .vorb .avatar.lg { width: 170px; height: 170px; }
+  .vbars { display: flex; align-items: center; gap: 6px; height: 40px; }
+  .vbars i { width: 5px; height: 8px; border-radius: 4px; background: linear-gradient(var(--accent), var(--accent-2)); }
+  .voice[data-state="listening"] .vbars i, .voice[data-state="speaking"] .vbars i { animation: vbar .9s ease-in-out infinite; }
+  .vbars i:nth-child(2) { animation-delay: .1s; } .vbars i:nth-child(3) { animation-delay: .2s; } .vbars i:nth-child(4) { animation-delay: .3s; } .vbars i:nth-child(5) { animation-delay: .2s; } .vbars i:nth-child(6) { animation-delay: .1s; }
+  @keyframes vbar { 50% { height: 36px; } }
+  .v-status { font-family: var(--display); font-size: 1.25rem; font-weight: 600; }
+  .v-text { min-height: 3.2em; max-width: 34ch; color: var(--muted); line-height: 1.55; }
+  .v-hint { position: absolute; bottom: calc(22px + env(safe-area-inset-bottom)); font-size: 0.76rem; color: var(--muted); opacity: 0.7; }
+
+  .splash { position: fixed; inset: 0; z-index: 200; display: grid; place-content: center; justify-items: center; gap: 20px; background: radial-gradient(55% 45% at 50% 45%, color-mix(in srgb, var(--accent) 18%, var(--bg)), var(--bg) 78%); transition: opacity .5s ease, visibility .5s; }
+  .splash.out { opacity: 0; visibility: hidden; }
+  .splash img { width: min(52vw, 230px); height: min(52vw, 230px); border-radius: 50%; object-fit: cover; box-shadow: 0 0 90px color-mix(in srgb, var(--accent) 45%, transparent); animation: logoIn 1s var(--ease) both; }
+  .splash span { font-family: var(--display); font-weight: 800; font-size: 1rem; letter-spacing: 0.5em; padding-left: 0.5em; color: var(--muted); animation: rise .9s .35s var(--ease) both; }
+  @keyframes logoIn { from { opacity: 0; transform: scale(.78) rotate(-8deg); filter: blur(10px); } }
 </style>
 </head>
 <body>
+<div class="splash" id="splash" aria-hidden="true"><img src="logo.png" alt=""><span>JARVIS</span></div>
+<script>(function(){var s=document.getElementById('splash');try{if(sessionStorage.getItem('jv_splash')||matchMedia('(prefers-reduced-motion: reduce)').matches){s.remove();return;}sessionStorage.setItem('jv_splash','1');}catch(e){}setTimeout(function(){s.classList.add('out');},1250);setTimeout(function(){s.remove();},1850);})();</script>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
@@ -462,6 +510,7 @@
   <symbol id="i-code" viewBox="0 0 24 24"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/></symbol>
   <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0012 3z"/></symbol>
   <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 24 24"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/></symbol>
   <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></symbol>
   <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zM17 8.5a5 5 0 010 7"/></symbol>
   <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
@@ -515,6 +564,7 @@
         <div class="field">
           <label class="sr-only" for="user-input">Message JARVIS</label>
           <textarea id="user-input" rows="1" placeholder="Message JARVIS…" enterkeyhint="send" autocomplete="off"></textarea>
+          <button class="mic" id="voice-btn" type="button" aria-label="Voice mode" title="Voice mode"><svg class="ic"><use href="#i-wave"/></svg></button>
           <button class="mic" id="mic-btn" type="button" aria-label="Speak your message" title="Bol kar likhein"><svg class="ic"><use href="#i-mic"/></svg></button>
           <button class="send" id="send-btn" type="button" aria-label="Send message" disabled><svg class="ic"><use href="#i-send"/></svg></button>
         </div>
@@ -541,9 +591,26 @@
     <div class="set-row"><span>Mic language</span><div class="seg" data-key="lang"><button type="button" data-val="hi-IN">Hindi</button><button type="button" data-val="en-IN">English</button></div></div>
     <div class="set-row"><span>Read replies aloud</span><div class="seg" data-key="autoread"><button type="button" data-val="off">Off</button><button type="button" data-val="on">On</button></div></div>
     <div class="set-row"><span>Text size</span><div class="seg" data-key="size"><button type="button" data-val="15px">Small</button><button type="button" data-val="16px">Medium</button><button type="button" data-val="18px">Large</button></div></div>
+    <div class="set-row"><span>Accent colour</span><div class="seg swatch" data-key="accent">
+      <button type="button" data-val="cyan" style="--c:#3bd6ff" aria-label="Cyan"></button><button type="button" data-val="violet" style="--c:#a78bfa" aria-label="Violet"></button><button type="button" data-val="emerald" style="--c:#34d399" aria-label="Emerald"></button><button type="button" data-val="orange" style="--c:#fb923c" aria-label="Orange"></button><button type="button" data-val="pink" style="--c:#f472b6" aria-label="Pink"></button></div></div>
+    <div class="set-row"><span>Your name</span><input class="txt" id="set-name" maxlength="24" placeholder="Aapka naam" autocomplete="given-name"></div>
     <div class="dialog-actions"><button class="btn" value="ok">Done</button></div>
   </form>
 </dialog>
+<dialog id="name-dlg" aria-labelledby="nm-title">
+  <h3 id="nm-title">Aapka naam kya hai?</h3>
+  <p>JARVIS aapko naam se bulayega.</p>
+  <input class="txt" id="nm-input" maxlength="24" placeholder="Jaise: Shiv" autocomplete="given-name">
+  <div class="dialog-actions" style="margin-top:16px"><button class="btn" type="button" id="nm-skip">Skip</button><button class="btn ok" type="button" id="nm-save">Save</button></div>
+</dialog>
+<div class="voice" id="voice" hidden role="dialog" aria-modal="true" aria-label="Voice mode" data-state="idle">
+  <button class="icon-btn voice-x" id="voice-close" type="button" aria-label="Close voice mode"><svg class="ic"><use href="#i-x"/></svg></button>
+  <div class="orb vorb" id="vorb" role="button" tabindex="0" aria-label="Tap to speak"></div>
+  <div class="vbars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <p class="v-status" id="v-status">Tap karke bolo</p>
+  <p class="v-text" id="v-text"></p>
+  <p class="v-hint">Orb par tap karke beech mein bol sakte ho</p>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <noscript><p style="padding:24px;font-family:sans-serif">JARVIS AI needs JavaScript to run.</p></noscript>
@@ -553,7 +620,7 @@
   'use strict';
 
   const API_URL   = "https://website-1wy5.onrender.com/chat";
-  const LOGO_URL  = "https://raw.githubusercontent.com/shiverror404/Website/main/file_00000000acdc82118e20363e93b6c517.png";
+  const LOGO_URL  = "logo.png";
   const STORE_KEY = 'jarvis_multi_chats';   
   const THEME_KEY = 'jarvis_theme';
   const GREETING  = "Namaste, sir. Main JARVIS hoon. Aaj main aapki kya madad kar sakta hoon?";
@@ -601,8 +668,9 @@ function getRandomPrompts(count = 4) {
   let busy = false;
   let pendingChatId = null;
   let activeController = null, stoppedByUser = false;
+  let listening = false, speaking = false, voiceOn = false, vBusy = false, sayId = 0;
   const SET_KEY = 'jarvis_settings';
-  const S = Object.assign({ lang: 'hi-IN', autoread: 'off', size: '16px', mode: 'normal' }, (() => { try { return JSON.parse(localStorage.getItem(SET_KEY)) || {}; } catch (e) { return {}; } })());
+  const S = Object.assign({ lang: 'hi-IN', autoread: 'off', size: '16px', mode: 'normal', accent: 'cyan', name: '', nameAsked: false }, (() => { try { return JSON.parse(localStorage.getItem(SET_KEY)) || {}; } catch (e) { return {}; } })());
 
   function loadChats() {
     try {
@@ -852,8 +920,8 @@ function getRandomPrompts(count = 4) {
   wrap.className = 'empty';
   const orb = document.createElement('div'); orb.className = 'orb';
   orb.appendChild(makeAvatar('lg'));
-  const h = document.createElement('h2'); h.textContent = GREETING;
-  const p = document.createElement('p'); p.textContent = 'Ask in Hindi, English or Hinglish.';
+  const h = document.createElement('h2'); h.textContent = greetTitle();
+  const p = document.createElement('p'); p.textContent = S.name ? 'Main JARVIS hoon. Aaj kya madad karun?' : 'Ask in Hindi, English or Hinglish.';
   const grid = document.createElement('div'); grid.className = 'prompts';
   
   // Yahan hum random prompts utha rahe hain
@@ -1071,6 +1139,7 @@ function getRandomPrompts(count = 4) {
       sendBtn.classList.toggle('stop', busy);
       sendBtn.innerHTML = `<svg class="ic"><use href="#i-${mode}"/></svg>`;
       sendBtn.setAttribute('aria-label', busy ? 'Stop generating' : 'Send message');
+      refreshOrb();
     }
   }
 
@@ -1121,7 +1190,7 @@ function getRandomPrompts(count = 4) {
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history, mode: S.mode }),
+        body: JSON.stringify({ message: text, history, mode: S.mode, user_name: S.name || '' }),
         signal: controller.signal
       });
       let data = null;
@@ -1130,7 +1199,7 @@ function getRandomPrompts(count = 4) {
       if (data && data.reply) {
         pushMessage(chatId, 'bot', String(data.reply));
         if (chatId === currentChatId) appendMessage({ role: 'bot', content: String(data.reply) });
-        if (S.autoread === 'on') say(String(data.reply));
+        if (voiceOn) voiceSpeak(String(data.reply)); else if (S.autoread === 'on') say(String(data.reply));
       } else if (chatId === currentChatId) {
         if (data && data.error) showError(String(data.error), '', retry);
         else showError("The server didn't send a reply.", data ? JSON.stringify(data).slice(0, 200) : 'HTTP ' + response.status, retry);
@@ -1235,7 +1304,7 @@ function getRandomPrompts(count = 4) {
   async function tryStream(chatId, text, history, signal, arm) {
     let res;
     try {
-      res = await fetch(API_URL + '/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, history, mode: S.mode }), signal });
+      res = await fetch(API_URL + '/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, history, mode: S.mode, user_name: S.name || '' }), signal });
     } catch (e) { if (e && e.name === 'AbortError') throw e; return false; }
     if (!res.ok || !res.body) return false;
 
@@ -1264,7 +1333,7 @@ function getRandomPrompts(count = 4) {
       pushMessage(chatId, 'bot', acc);
       if (el && el.isConnected) { shown = acc.length; draw(acc); el.classList.remove('streaming', 'revealing'); el._raw = acc; }
       else if (chatId === currentChatId) appendMessage({ role: 'bot', content: acc });
-      if (S.autoread === 'on') say(acc);
+      if (voiceOn) voiceSpeak(acc); else if (S.autoread === 'on') say(acc);
     };
     const reader = res.body.getReader(), dec = new TextDecoder();
     let buf = '';
@@ -1366,11 +1435,86 @@ function getRandomPrompts(count = 4) {
     c.style.setProperty('--my', (e.clientY - r.top) + 'px');
   });
 
-  function say(raw) {
-    if (!('speechSynthesis' in window)) return;
+  function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(S)); } catch (e) {} }
+  function refreshOrb() {
+    const st = speaking ? 'speaking' : listening ? 'listening' : busy ? 'thinking' : '';
+    if (st) document.documentElement.dataset.orb = st; else document.documentElement.removeAttribute('data-orb');
+  }
+  function greetTitle() {
+    if (!S.name) return GREETING;
+    const h = new Date().getHours();
+    const part = h >= 5 && h < 12 ? 'Good morning' : h >= 12 && h < 17 ? 'Good afternoon' : h >= 17 && h < 22 ? 'Good evening' : 'Hello';
+    return part + ', ' + S.name + '.';
+  }
+
+  const nameDlg = $('name-dlg'), nmInput = $('nm-input'), setNameEl = $('set-name');
+  function finishName(save) {
+    if (save && nmInput.value.trim()) S.name = nmInput.value.trim().slice(0, 24);
+    S.nameAsked = true; saveSettings(); nameDlg.close();
+    const c = getChat(); if (!c || !c.messages.length) renderChat();
+  }
+  $('nm-save').addEventListener('click', () => finishName(true));
+  $('nm-skip').addEventListener('click', () => finishName(false));
+  nmInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); finishName(true); } });
+  nameDlg.addEventListener('cancel', () => { S.nameAsked = true; saveSettings(); });
+  setNameEl.addEventListener('input', () => { S.name = setNameEl.value.trim().slice(0, 24); S.nameAsked = true; saveSettings(); });
+  $('settings').addEventListener('close', () => { const c = getChat(); if (!c || !c.messages.length) renderChat(); });
+  if (!S.name && !S.nameAsked && nameDlg.showModal) setTimeout(() => { if (!voiceOn) { nameDlg.showModal(); nmInput.focus(); } }, 2100);
+
+  // ---- Voice mode
+  const SRv = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const voiceEl = $('voice'), vStatus = $('v-status'), vText = $('v-text'), voiceBtn = $('voice-btn');
+  let vRec = null, vTimer = 0;
+  $('vorb').appendChild(makeAvatar('lg'));
+  const vSet = (state, msg) => { voiceEl.dataset.state = state; vStatus.textContent = msg; };
+  function vListen() {
+    if (!voiceOn || listening || busy || speaking || vBusy) return;
+    const rec = new SRv(); vRec = rec;
+    rec.lang = S.lang; rec.interimResults = true; rec.continuous = false;
+    let got = '';
+    rec.onstart = () => { listening = true; refreshOrb(); vSet('listening', 'Sun raha hoon…'); vText.textContent = ''; };
+    rec.onresult = (e) => { got = ''; for (const r of e.results) got += r[0].transcript; vText.textContent = got; };
+    rec.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { toast('Mic ki permission do'); closeVoice(); } };
+    rec.onend = () => {
+      listening = false; refreshOrb();
+      if (!voiceOn) return;
+      if (got.trim()) { vSet('thinking', 'Soch raha hoon…'); vBusy = true; sendMessage(got.trim()).finally(() => { vBusy = false; }); }
+      else vSet('idle', 'Tap karke bolo');
+    };
+    try { rec.start(); } catch (err) { listening = false; }
+  }
+  function voiceSpeak(raw) {
+    vSet('speaking', 'Bol raha hoon…');
+    vText.textContent = raw.length > 150 ? raw.slice(0, 150) + '…' : raw;
+    say(raw, () => { if (voiceOn) vSet('idle', 'Tap karke bolo'); });
+  }
+  function openVoice() {
+    if (!SRv) { toast('Voice mode ke liye Chrome use karo'); return; }
+    voiceOn = true; voiceEl.hidden = false; vSet('idle', 'Tap karke bolo'); vText.textContent = '';
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+    clearInterval(vTimer); vTimer = setInterval(vListen, 1200); vListen();
+  }
+  function closeVoice() {
+    voiceOn = false; clearInterval(vTimer);
+    try { if (vRec) vRec.abort(); window.speechSynthesis.cancel(); } catch (e) {}
+    sayId++; speaking = false; listening = false; voiceEl.hidden = true; refreshOrb();
+  }
+  voiceBtn.addEventListener('click', openVoice);
+  $('voice-close').addEventListener('click', closeVoice);
+  $('vorb').addEventListener('click', () => {
+    if (speaking) { sayId++; try { window.speechSynthesis.cancel(); } catch (e) {} speaking = false; refreshOrb(); vSet('idle', 'Tap karke bolo'); }
+    else vListen();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && voiceOn) closeVoice(); });
+  if (!SRv) voiceBtn.hidden = true;
+
+  function say(raw, done) {
+    if (!('speechSynthesis' in window)) { if (done) done(); return; }
     const t = raw.replace(/```[\s\S]*?```/g, ' code block ').replace(/[*_`#>]/g, '');
     const u = new SpeechSynthesisUtterance(t);
     u.lang = /[\u0900-\u097F]/.test(t) ? 'hi-IN' : 'en-IN';
+    const my = ++sayId; speaking = true; refreshOrb();
+    u.onend = u.onerror = () => { if (my !== sayId) return; speaking = false; refreshOrb(); if (done) done(); };
     window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
   }
 
@@ -1393,6 +1537,8 @@ function getRandomPrompts(count = 4) {
   function syncSettingsUI() {
     setDlg.querySelectorAll('.seg').forEach(g => g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(S[g.dataset.key] === b.dataset.val))));
     document.documentElement.style.setProperty('--fs', S.size);
+    document.documentElement.dataset.accent = S.accent;
+    const sn = $('set-name'); if (sn && document.activeElement !== sn) sn.value = S.name || '';
   }
   setDlg.addEventListener('click', (e) => {
     const b = e.target.closest('.seg button');
@@ -1412,7 +1558,8 @@ function getRandomPrompts(count = 4) {
     const t = raw.replace(/```[\s\S]*?```/g, ' code block ').replace(/[*_`#>]/g, '');
     const u = new SpeechSynthesisUtterance(t);
     u.lang = /[\u0900-\u097F]/.test(t) ? 'hi-IN' : 'en-IN';
-    u.onend = u.onerror = () => { delete btn.dataset.on; };
+    const my = ++sayId; speaking = true; refreshOrb();
+    u.onend = u.onerror = () => { delete btn.dataset.on; if (my === sayId) { speaking = false; refreshOrb(); } };
     btn.dataset.on = '1';
     ss.speak(u);
   }
@@ -1440,10 +1587,10 @@ function getRandomPrompts(count = 4) {
       rec = new SR();
       rec.lang = S.lang; rec.interimResults = true; rec.continuous = false;
       base = input.value.trim() ? input.value.trim() + ' ' : '';
-      rec.onstart = () => { on = true; micBtn.classList.add('listening'); };
+      rec.onstart = () => { on = true; listening = true; refreshOrb(); micBtn.classList.add('listening'); };
       rec.onresult = (e) => { let t = ''; for (const r of e.results) t += r[0].transcript; input.value = base + t; autosize(); };
       rec.onerror = (e) => { if (e.error === 'not-allowed') toast('Mic ki permission do'); };
-      rec.onend = () => { on = false; micBtn.classList.remove('listening'); input.focus(); };
+      rec.onend = () => { on = false; listening = false; refreshOrb(); micBtn.classList.remove('listening'); input.focus(); };
       try { rec.start(); } catch (err) {}
     });
   }
