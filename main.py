@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import re
@@ -5,7 +6,7 @@ import re
 import requests
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -21,8 +22,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# TUMHARI API KEY (waisi hi hai)
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
+# API key sirf environment variable se aati hai (Render > Environment > GROQ_API_KEY)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 DEFAULT_STYLE = "dost"
@@ -100,7 +101,7 @@ def system_prompt(style: str, user_name: str) -> str:
     )
 
 def clean_output(text: str) -> str:
-    text = re.sub(r"(?i)[^\n]*?Tip[^\n:]*?:\s*-?", "Tip :- ", text)
+    text = re.sub(r"(?im)^[ \t]*tip[ \t]*:[ \t]*-?[ \t]*", "Tip :- ", text)
     text = text.replace("**", "").replace("*", "").replace("_", "")
     return text
 
@@ -109,6 +110,7 @@ class ChatRequest(BaseModel):
     history: list = []
     style: str = "dost"
     user_name: str = ""
+    mode: str = "normal"
 
 http = requests.Session()
 
@@ -127,21 +129,26 @@ def fail(message: str, status: int = 502):
 def health():
     return {"status": "ok", "bot": BOT_NAME}
 
-@app.post("/chat")
-def chat(req: ChatRequest):
-    if not GROQ_API_KEY:
-        return fail("Server setup adhura hai: GROQ_API_KEY set nahi hai.", 500)
-        
-    # ---------------------------------------------------------
-    # NAYA LOGIC: Shiv ke dost ke liye direct reply (Bypass AI)
-    # ---------------------------------------------------------
-    check_msg = req.message.lower()
-    if "shiv" in check_msg and ("dost" in check_msg or "friend" in check_msg or "mitra" in check_msg):
-        reply = "Shiv ka dost Shivansh Pokhriyal hai, aur wo bhi 9th grade mein padhta hai! 😎"
-        return {"reply": clean_output(reply)}
+MODE_NOTES = {
+    "study": "STUDY MODE: explain step by step like a patient teacher, with one simple example. Use plain numbering like 1. 2. 3. for steps.",
+    "coder": "CODER MODE: you are an expert programmer. Put working code inside fenced code blocks with the language name. Keep the explanation short and practical.",
+    "funny": "FUNNY MODE: be witty and playful with light jokes and a few emojis, but keep the answer correct.",
+}
+CODER_LANGUAGE_RULE = "LANGUAGE RULES:\n- Reply ONLY in English or Hinglish (Roman script).\n- NEVER use Devanagari script.\n"
+FRIEND_REPLY = "Shiv ka dost Shivansh Pokhriyal hai, aur wo bhi 9th grade mein padhta hai! 😎"
 
-    # Agar upar wali condition match nahi hui, toh normal AI chalega
-    messages = [{"role": "system", "content": system_prompt(req.style, req.user_name)}]
+def is_friend_question(message: str) -> bool:
+    m = message.lower()
+    return "shiv" in m and ("dost" in m or "friend" in m or "mitra" in m)
+
+def build_payload(req: ChatRequest):
+    mode = req.mode if req.mode in MODE_NOTES else "normal"
+    system = system_prompt(req.style, req.user_name)
+    if mode == "coder":
+        system = system.replace(LANGUAGE_RULE, CODER_LANGUAGE_RULE)
+    if mode in MODE_NOTES:
+        system += "\n" + MODE_NOTES[mode]
+    messages = [{"role": "system", "content": system}]
 
     history = []
     for msg in req.history[-HISTORY_MESSAGES:]:
@@ -149,41 +156,99 @@ def chat(req: ChatRequest):
             continue
         role = "user" if msg.get("role") == "user" else "assistant"
         content = str(msg.get("content", ""))
-
         if "Tip :-" in content:
             content = content.split("Tip :-")[0].strip()
-
         content = content.replace('"', "").replace("*", "").replace("_", "")
         content = re.sub(r"[\x00-\x1f\x7f\u200b-\u200f\ufeff]+", " ", content)
         content = re.sub(r"\s+", " ", content).strip()[:HISTORY_CHARS]
         if content:
             history.append({"role": role, "content": content})
-
     while history and history[0]["role"] == "assistant":
         history.pop(0)
     messages.extend(history)
-
     messages.append({"role": "user", "content": req.message[:2000]})
 
     payload = {
         "messages": messages,
         "temperature": 0.8,
-        "max_tokens": MAX_TOKENS,
+        "max_tokens": max(MAX_TOKENS, 1500) if mode == "coder" else MAX_TOKENS,
     }
+    return payload, mode
 
+def sse(obj) -> str:
+    return "data: " + json.dumps(obj, ensure_ascii=False) + "\n\n"
+
+@app.post("/chat")
+def chat(req: ChatRequest):
+    if not GROQ_API_KEY:
+        return fail("Server setup adhura hai: GROQ_API_KEY set nahi hai.", 500)
+    if is_friend_question(req.message):
+        return {"reply": clean_output(FRIEND_REPLY)}
+    payload, mode = build_payload(req)
     try:
         reply = call_groq(payload, DEFAULT_MODEL)
         if not reply:
             raise ValueError("empty reply")
-        return {"reply": clean_output(reply)}
+        return {"reply": reply if mode == "coder" else clean_output(reply)}
     except requests.exceptions.Timeout:
         return fail("Server ne time pe jawab nahi diya. Dobara try karo.")
     except requests.exceptions.HTTPError as e:
-        resp = e.response
-        code = resp.status_code if resp is not None else 0
+        code = e.response.status_code if e.response is not None else 0
         return fail(f"AI server se jawab nahi aaya (code {code}). Thodi der baad try karo.")
-    except Exception as e:
+    except Exception:
+        log.exception("chat failed")
         return fail("Kuch gadbad ho gayi. Dobara try karo.")
+
+@app.post("/chat/stream")
+def chat_stream(req: ChatRequest):
+    """Server-Sent Events: har chunk 'data: {"t": "..."}' ke roop mein aata hai."""
+    if not GROQ_API_KEY:
+        return fail("Server setup adhura hai: GROQ_API_KEY set nahi hai.", 500)
+    headers = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    if is_friend_question(req.message):
+        return StreamingResponse(iter([sse({"t": FRIEND_REPLY}), "data: [DONE]\n\n"]),
+                                 media_type="text/event-stream", headers=headers)
+    payload, mode = build_payload(req)
+    payload["model"] = DEFAULT_MODEL
+    payload["stream"] = True
+    auth = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+
+    def gen():
+        got = False
+        try:
+            with http.post(GROQ_URL, headers=auth, json=payload, stream=True, timeout=(10, 60)) as r:
+                r.raise_for_status()
+                for raw in r.iter_lines():
+                    if not raw:
+                        continue
+                    line = raw.decode("utf-8", "ignore")
+                    if not line.startswith("data:"):
+                        continue
+                    data = line[5:].strip()
+                    if data == "[DONE]":
+                        break
+                    try:
+                        piece = json.loads(data)["choices"][0].get("delta", {}).get("content") or ""
+                    except Exception:
+                        continue
+                    if piece:
+                        got = True
+                        if mode != "coder":
+                            piece = piece.replace("*", "").replace("_", "")
+                        yield sse({"t": piece})
+            if not got:
+                yield sse({"error": "Khaali jawab aaya. Dobara try karo."})
+        except requests.exceptions.Timeout:
+            yield sse({"error": "Server ne time pe jawab nahi diya. Dobara try karo."})
+        except requests.exceptions.HTTPError as e:
+            code = e.response.status_code if e.response is not None else 0
+            yield sse({"error": f"AI server se jawab nahi aaya (code {code}). Thodi der baad try karo."})
+        except Exception:
+            log.exception("stream failed")
+            yield sse({"error": "Kuch gadbad ho gayi. Dobara try karo."})
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(gen(), media_type="text/event-stream", headers=headers)
 
 if __name__ == "__main__":
     import uvicorn

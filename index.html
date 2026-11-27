@@ -10,7 +10,13 @@
 <meta property="og:title" content="JARVIS AI">
 <meta property="og:description" content="Ask anything in Hindi, English or Hinglish.">
 <meta property="og:type" content="website">
-<link rel="icon" href="https://raw.githubusercontent.com/shiverror404/Website/main/file_00000000acdc82118e20363e93b6c517.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="JARVIS">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -288,6 +294,20 @@
   .seg { display: flex; gap: 4px; padding: 3px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; }
   .seg button { flex: 1; padding: 7px 6px; border-radius: 8px; font-size: 0.88rem; color: var(--muted); }
   .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+
+  .btn-ghost { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); font-weight: 600; transition: border-color .15s; }
+  .btn-ghost:hover { border-color: var(--accent); }
+  .btn.ok { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .msg-user { align-items: flex-start; gap: 6px; }
+  .msg-edit { align-self: center; opacity: 0; }
+  .msg-user:hover .msg-edit, .msg-edit:focus-visible { opacity: 1; }
+  @media (hover: none) { .msg-edit { opacity: 0.7; } }
+  .msg-user.editing { display: block; }
+  .edit-box { width: min(100%, 560px); margin-left: auto; display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--accent); border-radius: 16px; background: var(--surface); box-shadow: 0 0 0 3px var(--focus); }
+  .edit-box textarea { width: 100%; resize: none; background: none; border: 0; outline: 0; font-size: 16px; line-height: 1.5; max-height: 200px; }
+  .edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .streaming .prose > *:last-child::after { content: ""; display: inline-block; width: 7px; height: 1.05em; margin-left: 3px; vertical-align: -3px; border-radius: 2px; background: var(--accent); animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
 </style>
 </head>
 <body>
@@ -329,6 +349,7 @@
       <input id="chat-search" type="search" placeholder="Search chats" autocomplete="off">
     </label>
     <nav id="history-list" aria-label="Previous chats"></nav>
+    <button class="btn-ghost" id="install-btn" type="button" hidden><svg class="ic"><use href="#i-download"/></svg>Install app</button>
     <p class="side-foot">Chats are saved on this device only.</p>
   </aside>
   <div class="scrim" id="overlay"></div>
@@ -449,12 +470,6 @@ function getRandomPrompts(count = 4) {
   let activeController = null, stoppedByUser = false;
   const SET_KEY = 'jarvis_settings';
   const S = Object.assign({ lang: 'hi-IN', autoread: 'off', size: '16px', mode: 'normal' }, (() => { try { return JSON.parse(localStorage.getItem(SET_KEY)) || {}; } catch (e) { return {}; } })());
-  const MODES = {
-    study: 'Explain step by step like a patient teacher, with simple examples.',
-    coder: 'Reply as an expert programmer: concise, practical, code in code blocks.',
-    funny: 'Reply in a fun, witty tone with light humor.'
-  };
-  const modePrefix = () => MODES[S.mode] ? '[Style: ' + MODES[S.mode] + '] ' : '';
 
   function loadChats() {
     try {
@@ -672,7 +687,10 @@ function getRandomPrompts(count = 4) {
       const b = document.createElement('div');
       b.className = 'bubble';
       b.textContent = msg.content;
-      el.appendChild(b);
+      const eb = document.createElement('button');
+      eb.type = 'button'; eb.className = 'chip-btn msg-edit'; eb.dataset.edit = '1';
+      eb.setAttribute('aria-label', 'Edit message'); eb.innerHTML = icon('edit');
+      el.append(eb, b);
     } else {
       el.appendChild(makeAvatar('sm'));
       const col = document.createElement('div'); col.className = 'msg-col';
@@ -956,15 +974,17 @@ function getRandomPrompts(count = 4) {
     const history = chat.messages.slice(-7, -1).map(sanitizeForServer).filter(m => m.content);
     const controller = new AbortController();
     activeController = controller;
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    let timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const arm = () => { clearTimeout(timeoutId); timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS); };
     const hintId = setTimeout(() => { typingText.textContent = 'Server is waking up, this can take up to a minute…'; }, 8000);
     const retry = () => { clearError(); requestReply(chatId, text); };
 
     try {
+      if (await tryStream(chatId, text, history, controller.signal, arm)) return;
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: modePrefix() + text, history, mode: S.mode }),
+        body: JSON.stringify({ message: text, history, mode: S.mode }),
         signal: controller.signal
       });
       let data = null;
@@ -1022,6 +1042,8 @@ function getRandomPrompts(count = 4) {
       if (ok) flashCopied(msgBtn); else toast("Couldn't copy");
       return;
     }
+    const editBtn = e.target.closest('[data-edit]');
+    if (editBtn) { startEdit(editBtn.closest('.msg')); return; }
     const speakBtn = e.target.closest('[data-speak]');
     if (speakBtn) { speak(speakBtn); return; }
     const regenBtn = e.target.closest('[data-regen]');
@@ -1072,6 +1094,114 @@ function getRandomPrompts(count = 4) {
     img.onerror = () => { img.remove(); slot.textContent = 'J'; };
     slot.appendChild(img);
   });
+
+  async function tryStream(chatId, text, history, signal, arm) {
+    let res;
+    try {
+      res = await fetch(API_URL + '/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, history, mode: S.mode }), signal });
+    } catch (e) { if (e && e.name === 'AbortError') throw e; return false; }
+    if (!res.ok || !res.body) return false;
+
+    let acc = '', el = null, body = null, raf = 0, err = '';
+    const paint = () => {
+      raf = 0;
+      if (!body) return;
+      const open = (acc.match(/```/g) || []).length % 2;
+      body.innerHTML = renderMarkdown(open ? acc + '\n```' : acc);
+      if (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 160) messagesEl.scrollTop = messagesEl.scrollHeight;
+    };
+    const finish = () => {
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      if (!acc) return;
+      pushMessage(chatId, 'bot', acc);
+      if (el && el.isConnected) { paint(); el.classList.remove('streaming', 'revealing'); el._raw = acc; }
+      else if (chatId === currentChatId) appendMessage({ role: 'bot', content: acc });
+      if (S.autoread === 'on') say(acc);
+    };
+    const reader = res.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        arm();
+        buf += dec.decode(value, { stream: true });
+        let i;
+        while ((i = buf.indexOf('\n\n')) >= 0) {
+          const evt = buf.slice(0, i).trim(); buf = buf.slice(i + 2);
+          if (!evt.startsWith('data:')) continue;
+          const d = evt.slice(5).trim();
+          if (d === '[DONE]') continue;
+          let j; try { j = JSON.parse(d); } catch (e) { continue; }
+          if (j.error) { err = String(j.error); continue; }
+          if (j.t) {
+            if (!el && chatId === currentChatId) {
+              el = buildMessage({ role: 'bot', content: '' }, true);
+              el.classList.add('streaming', 'revealing');
+              body = el.querySelector('.prose');
+              thread.appendChild(el);
+              typingEl.hidden = true;
+            }
+            acc += j.t;
+            if (!raf) raf = requestAnimationFrame(paint);
+          }
+        }
+      }
+    } catch (e) { finish(); throw e; }
+    finish();
+    if (err && !acc && chatId === currentChatId) showError(err, '', () => { clearError(); requestReply(chatId, text); });
+    else if (err) toast('Reply adhura reh gaya');
+    return true;
+  }
+
+  function startEdit(el) {
+    if (busy) { toast('Pehle jawab poora hone do'); return; }
+    const chat = getChat();
+    if (!chat) return;
+    const idx = Array.prototype.indexOf.call(thread.children, el);
+    const m = chat.messages[idx];
+    if (!m || m.role !== 'user') return;
+    el.classList.add('editing');
+    const box = document.createElement('div'); box.className = 'edit-box';
+    const ta = document.createElement('textarea'); ta.value = m.content; ta.setAttribute('aria-label', 'Edit message');
+    const row = document.createElement('div'); row.className = 'edit-actions';
+    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'btn'; cancel.textContent = 'Cancel';
+    const save = document.createElement('button'); save.type = 'button'; save.className = 'btn ok'; save.textContent = 'Save & send';
+    row.append(cancel, save); box.append(ta, row);
+    el.replaceChildren(box);
+    const fit = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 200) + 'px'; };
+    fit(); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+    ta.addEventListener('input', fit);
+    const submit = () => {
+      const v = ta.value.trim();
+      if (!v) return;
+      if (v === m.content) { renderChat(); return; }
+      chat.messages.length = idx;
+      pushMessage(chat.id, 'user', v);
+      persist(); renderChat();
+      requestReply(chat.id, v);
+    };
+    cancel.addEventListener('click', () => renderChat());
+    save.addEventListener('click', submit);
+    ta.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit(); }
+      else if (e.key === 'Escape') renderChat();
+    });
+  }
+
+  const installBtn = $('install-btn');
+  let deferredInstall = null;
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredInstall = e; installBtn.hidden = false; });
+  installBtn.addEventListener('click', async () => {
+    if (!deferredInstall) return;
+    deferredInstall.prompt();
+    try { await deferredInstall.userChoice; } catch (e) {}
+    deferredInstall = null; installBtn.hidden = true;
+  });
+  window.addEventListener('appinstalled', () => { installBtn.hidden = true; toast('JARVIS install ho gaya'); });
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
 
   function say(raw) {
     if (!('speechSynthesis' in window)) return;
