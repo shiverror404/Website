@@ -19,7 +19,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
 <script>
   (function () {
     try {
@@ -308,6 +308,135 @@
   .edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
   .streaming .prose > *:last-child::after { content: ""; display: inline-block; width: 7px; height: 1.05em; margin-left: 3px; vertical-align: -3px; border-radius: 2px; background: var(--accent); animation: blink 1s steps(2) infinite; }
   @keyframes blink { 50% { opacity: 0; } }
+
+  /* ===== DESIGN v2 ===== */
+  @property --ang { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+  :root { --accent-2: #8b7bff; --glass: rgba(13, 22, 38, 0.64); --glass-2: rgba(24, 38, 62, 0.5); --brd: rgba(130, 175, 235, 0.16); --display: "Sora", var(--font); --ease: cubic-bezier(.22, .8, .3, 1); --user-bg: #1b4f8f; }
+  html[data-theme="light"] { --accent-2: #5b4bd6; --glass: rgba(255, 255, 255, 0.74); --glass-2: rgba(255, 255, 255, 0.62); --brd: rgba(20, 60, 110, 0.13); --user-bg: #0a7fa8; --shadow: 0 18px 50px rgba(15, 35, 70, 0.14); }
+  ::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+
+  body::before { inset: -20%; background:
+    radial-gradient(38% 34% at 78% 12%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 70%),
+    radial-gradient(34% 30% at 12% 88%, color-mix(in srgb, var(--accent-2) 22%, transparent), transparent 70%),
+    radial-gradient(30% 26% at 50% 50%, color-mix(in srgb, var(--accent-2) 9%, transparent), transparent 70%);
+    animation: drift 28s ease-in-out infinite alternate; }
+  html[data-theme="light"] body::before { opacity: 0.55; }
+  @keyframes drift { to { transform: translate3d(3%, -2%, 0) scale(1.08) rotate(2deg); } }
+  body::after { content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.5;
+    background-image: linear-gradient(var(--brd) 1px, transparent 1px), linear-gradient(90deg, var(--brd) 1px, transparent 1px); background-size: 44px 44px;
+    -webkit-mask: radial-gradient(70% 55% at 50% 0%, #000, transparent 75%); mask: radial-gradient(70% 55% at 50% 0%, #000, transparent 75%); }
+
+  .sidebar { background: var(--glass); -webkit-backdrop-filter: blur(22px) saturate(140%); backdrop-filter: blur(22px) saturate(140%); border-right: 1px solid var(--brd); gap: 14px; padding: 16px 12px 12px; }
+  .brand { font-family: var(--display); font-weight: 800; font-size: 1.08rem; letter-spacing: 0.03em; }
+  .wordmark em { font-style: normal; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em; padding: 3px 7px; margin-left: 7px; border-radius: 999px; color: var(--on-accent); background: linear-gradient(135deg, var(--accent), var(--accent-2)); vertical-align: 3px; }
+  .brand .avatar { box-shadow: 0 0 0 1px var(--brd), 0 0 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .btn-primary { position: relative; overflow: hidden; border-radius: 14px; padding: 12px 14px; background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 45%, var(--accent-2))); box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 28%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35); transition: transform .15s, box-shadow .2s; }
+  .btn-primary::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.38) 50%, transparent 65%); transform: translateX(-120%); transition: transform .7s var(--ease); }
+  .btn-primary:hover { filter: none; transform: translateY(-1px); box-shadow: 0 12px 30px color-mix(in srgb, var(--accent) 38%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+  .btn-primary:hover::after { transform: translateX(120%); }
+  .search { background: var(--glass-2); border-color: var(--brd); border-radius: 14px; }
+  .group-label { font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; opacity: 0.8; }
+  .hist-item { border-radius: 12px; transition: background .2s; }
+  .hist-item.active { background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, transparent), color-mix(in srgb, var(--accent) 4%, transparent)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .hist-item.active::before { box-shadow: 0 0 12px var(--accent); }
+  .side-foot { display: flex; align-items: center; gap: 8px; font-size: 0.72rem; }
+  .side-foot::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+
+  .topbar { position: relative; background: transparent; border-bottom: 0; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+  .topbar::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--brd) 20%, var(--brd) 80%, transparent); }
+  .chat-title { font-family: var(--display); font-weight: 600; font-size: 0.98rem; }
+  .icon-btn { border-radius: 12px; }
+  .icon-btn:hover { background: var(--glass-2); box-shadow: inset 0 0 0 1px var(--brd); }
+
+  .empty { gap: 16px; padding: 28px 0 12px; }
+  .empty > * { animation: rise .75s var(--ease) both; }
+  .empty > :nth-child(2) { animation-delay: .08s; } .empty > :nth-child(3) { animation-delay: .16s; } .empty > :nth-child(4) { animation-delay: .24s; } .empty > :nth-child(5) { animation-delay: .32s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+  @keyframes float { 50% { transform: translateY(-7px); } }
+  .orb { width: 132px; height: 132px; margin-bottom: 6px; box-shadow: 0 0 90px color-mix(in srgb, var(--accent) 24%, transparent); animation: rise .75s var(--ease) both, float 6s ease-in-out .8s infinite; }
+  .orb::after { content: ""; position: absolute; inset: -16px; border-radius: 50%; border: 1px dashed color-mix(in srgb, var(--accent) 38%, transparent); animation: spin 26s linear infinite reverse; }
+  .avatar.lg { width: 104px; height: 104px; box-shadow: 0 0 0 1px var(--brd), 0 0 40px color-mix(in srgb, var(--accent-2) 35%, transparent); }
+  .orb.mini { width: 36px; height: 36px; margin: 0; box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 40%, transparent); animation: none; }
+  .orb.mini::after { display: none; }
+  .empty h2 { font-family: var(--display); font-size: clamp(1.75rem, 6.4vw, 2.6rem); font-weight: 700; letter-spacing: -0.025em; line-height: 1.12; max-width: 18ch; background: linear-gradient(180deg, var(--text) 30%, color-mix(in srgb, var(--text) 55%, var(--accent))); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .empty p { font-size: 1.02rem; max-width: 34ch; }
+  .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .chips span { padding: 5px 13px; border-radius: 999px; font-size: 0.76rem; font-weight: 600; letter-spacing: 0.02em; color: var(--muted); background: var(--glass-2); border: 1px solid var(--brd); }
+  .prompts { gap: 12px; max-width: 660px; margin-top: 14px; }
+  .prompt { position: relative; overflow: hidden; display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 16px; background: var(--glass-2); border: 1px solid var(--brd); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: none; transition: transform .25s var(--ease), border-color .2s, box-shadow .25s; }
+  .prompt::before { content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity .25s; background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%); }
+  .prompt:hover { transform: translateY(-3px); background: var(--glass-2); border-color: color-mix(in srgb, var(--accent) 45%, var(--brd)); box-shadow: 0 14px 34px color-mix(in srgb, var(--accent) 14%, transparent); }
+  .prompt:hover::before { opacity: 1; }
+  .prompt:active { transform: scale(0.985); }
+  .p-ic { position: relative; display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 10px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent); }
+  .p-tx { position: relative; font-size: 0.92rem; line-height: 1.4; font-weight: 500; }
+
+  .msg-user .bubble { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 28%, var(--user-bg)), color-mix(in srgb, var(--accent-2) 40%, var(--user-bg))); color: #fff; border-radius: 22px 22px 6px 22px; padding: 11px 17px; box-shadow: 0 10px 28px color-mix(in srgb, var(--accent-2) 26%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.25); }
+  .msg-col::before { content: "JARVIS"; display: block; margin-bottom: 4px; font-family: var(--display); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.16em; color: var(--muted); }
+  .msg-bot .avatar { width: 34px; height: 34px; }
+  .prose { line-height: 1.75; }
+  .typing { width: fit-content; padding: 8px 16px 8px 8px; border-radius: 999px; background: var(--glass-2); border: 1px solid var(--brd); }
+  .chip-btn { border: 1px solid transparent; border-radius: 10px; }
+  .chip-btn:hover { border-color: var(--brd); }
+  .error-card { border-radius: 16px; }
+  .codeblock { border-radius: 14px; border-color: var(--brd); background: color-mix(in srgb, var(--surface) 80%, var(--bg)); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16); }
+  .codehead { position: relative; padding-left: 58px; background: var(--glass-2); }
+  .codehead::before { content: ""; position: absolute; left: 15px; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%; background: #ff6b6b; box-shadow: 16px 0 0 #ffc24b, 32px 0 0 #3ddc97; }
+
+  .composer { padding: 6px 16px calc(14px + env(safe-area-inset-bottom)); }
+  .field { position: relative; border-radius: 28px; padding: 8px 8px 8px 22px; background: var(--glass); border: 1px solid var(--brd); -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.05); }
+  .field::before { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1.5px; pointer-events: none; opacity: 0; transition: opacity .3s;
+    background: conic-gradient(from var(--ang), var(--accent), var(--accent-2), transparent 40%, transparent 60%, var(--accent));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; animation: ang 5s linear infinite; }
+  @keyframes ang { to { --ang: 360deg; } }
+  .field:focus-within { border-color: transparent; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3), 0 0 44px color-mix(in srgb, var(--accent) 15%, transparent); }
+  .field:focus-within::before { opacity: 1; }
+  .send { width: 44px; height: 44px; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 38%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+  .send:disabled { background: var(--glass-2); box-shadow: none; }
+  .send.stop { box-shadow: none; }
+  .foot-note { font-size: 0.72rem; opacity: 0.8; }
+  @media (hover: hover) and (min-width: 900px) { .foot-note::after { content: " \00b7  Enter to send \00b7  Shift+Enter for new line"; } }
+
+  dialog { padding: 24px; border-radius: 22px; background: var(--glass); border: 1px solid var(--brd); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5); }
+  dialog[open] { animation: pop2 .28s var(--ease); }
+  @keyframes pop2 { from { opacity: 0; transform: translateY(14px) scale(.96); } }
+  dialog::backdrop { background: rgba(3, 8, 16, 0.55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  dialog h3 { font-family: var(--display); font-size: 1.15rem; margin-bottom: 14px; }
+  .seg { background: var(--glass-2); border-color: var(--brd); border-radius: 12px; }
+  .seg button { border-radius: 9px; transition: background .2s, color .2s; }
+  .seg button[aria-pressed="true"] { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+  .toast { background: var(--glass); color: var(--text); border: 1px solid var(--brd); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: var(--shadow); }
+  .jump { background: var(--glass); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-color: var(--brd); }
+  .messages { scroll-behavior: smooth; }
+  ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 35%, transparent); border: 2px solid transparent; background-clip: content-box; }
+  @media (max-width: 899px) {
+    .sidebar { background: var(--glass); }
+    .orb { width: 112px; height: 112px; }
+    .avatar.lg { width: 88px; height: 88px; }
+    .column { padding-inline: 14px; }
+    .prompts { gap: 10px; }
+  }
+
+  /* tuning */
+  .empty { gap: 14px; padding: 12px 0; }
+  .empty h2 { font-size: clamp(1.4rem, 4.6vw, 2rem); max-width: 26ch; }
+  .orb { width: 116px; height: 116px; }
+  .avatar.lg { width: 90px; height: 90px; }
+  .codehead { padding-left: 68px; }
+  .empty h2 { text-wrap: balance; }
+  html[data-theme="light"] body::before { opacity: 0.4; }
+  @media (max-width: 899px) {
+    .orb { width: 88px; height: 88px; }
+    .avatar.lg { width: 68px; height: 68px; }
+    .empty { gap: 12px; padding: 8px 0; }
+    .empty h2 { font-size: 1.4rem; }
+    .empty p { font-size: 0.95rem; }
+    .prompts { margin-top: 6px; }
+    .prompt { padding: 11px 14px; }
+    .prompt:nth-child(n+4) { display: none; }
+    .topbar .mobile-brand { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -329,6 +458,10 @@
   <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3H7l3-3-1-6zM12 13v7"/></symbol>
   <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/></symbol>
   <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2L12 3z"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0012 3z"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></symbol>
   <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></symbol>
   <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zM17 8.5a5 5 0 010 7"/></symbol>
   <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
@@ -339,7 +472,7 @@
 
   <aside class="sidebar" id="sidebar" aria-label="Chat history">
     <div class="side-top">
-      <div class="brand"><span class="avatar" id="brand-avatar" aria-hidden="true"></span><span>JARVIS AI</span></div>
+      <div class="brand"><span class="avatar" id="brand-avatar" aria-hidden="true"></span><span class="wordmark">JARVIS<em>AI</em></span></div>
       <button class="icon-btn" id="close-sidebar" type="button" aria-label="Close history"><svg class="ic"><use href="#i-x"/></svg></button>
     </div>
     <button class="btn-primary" id="new-chat-btn" type="button"><svg class="ic"><use href="#i-plus"/></svg>New Chat</button>
@@ -725,13 +858,17 @@ function getRandomPrompts(count = 4) {
   
   // Yahan hum random prompts utha rahe hain
   const randomPrompts = getRandomPrompts(4);
-  randomPrompts.forEach(t => {
+  randomPrompts.forEach((t, i) => {
     const b = document.createElement('button');
-    b.type = 'button'; b.className = 'prompt'; b.dataset.prompt = t; b.textContent = t;
+    b.type = 'button'; b.className = 'prompt'; b.dataset.prompt = t;
+    b.innerHTML = '<span class="p-ic">' + icon(['spark', 'code', 'bulb', 'globe'][i % 4]) + '</span><span class="p-tx"></span>';
+    b.querySelector('.p-tx').textContent = t;
     grid.appendChild(b);
   });
   
-  wrap.append(orb, h, p, grid);
+  const chips = document.createElement('div'); chips.className = 'chips';
+  ['Hindi', 'English', 'Hinglish', 'Voice'].forEach(x => { const c = document.createElement('span'); c.textContent = x; chips.appendChild(c); });
+  wrap.append(orb, h, p, chips, grid);
   return wrap;
 }
 
@@ -1220,6 +1357,14 @@ function getRandomPrompts(count = 4) {
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }
+
+  document.addEventListener('pointermove', (e) => {
+    const c = e.target.closest && e.target.closest('.prompt');
+    if (!c) return;
+    const r = c.getBoundingClientRect();
+    c.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+    c.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  });
 
   function say(raw) {
     if (!('speechSynthesis' in window)) return;
