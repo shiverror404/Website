@@ -270,6 +270,24 @@
   .msg-bot:not(:last-child) [data-regen] { display: none; }
   .chip-btn[data-on] { color: var(--accent); }
   .sidebar { background: color-mix(in srgb, var(--surface) 92%, transparent); }
+
+  :root { --tk-c: #6b7f99; --tk-s: #8be28b; --tk-n: #ffb86b; --tk-k: #c79bff; --tk-f: #6fd3ff; }
+  html[data-theme="light"] { --tk-c: #6b7a90; --tk-s: #1a7f37; --tk-n: #b35900; --tk-k: #7a3fd1; --tk-f: #0969b3; }
+  body { font-size: var(--fs, 16px); }
+  .tk-c { color: var(--tk-c); font-style: italic; } .tk-s { color: var(--tk-s); } .tk-n { color: var(--tk-n); } .tk-k { color: var(--tk-k); } .tk-f { color: var(--tk-f); }
+  .tblwrap { overflow-x: auto; margin: 0.4em 0 0.9em; border: 1px solid var(--line); border-radius: 12px; }
+  .prose table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+  .prose th, .prose td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); min-width: 90px; }
+  .prose th { background: var(--surface-2); font-weight: 700; }
+  .prose tr:last-child td { border-bottom: 0; }
+  .hist-act { width: 30px; }
+  .hist-act:hover { color: var(--accent); }
+  .hist-pin.on { opacity: 1; color: var(--accent); }
+  .hist-edit { flex: 1; min-width: 0; margin: 4px 6px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--accent); background: var(--bg); outline: 0; }
+  .set-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; font-size: 0.9rem; color: var(--muted); }
+  .seg { display: flex; gap: 4px; padding: 3px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; }
+  .seg button { flex: 1; padding: 7px 6px; border-radius: 8px; font-size: 0.88rem; color: var(--muted); }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 700; }
 </style>
 </head>
 <body>
@@ -288,6 +306,9 @@
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
   <symbol id="i-retry" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0114-5.3L20 9M20 4v5h-5M20 12a8 8 0 01-14 5.3L4 15M4 20v-5h5"/></symbol>
   <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3H7l3-3-1-6zM12 13v7"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></symbol>
   <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></symbol>
   <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zM17 8.5a5 5 0 010 7"/></symbol>
   <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
@@ -318,6 +339,7 @@
       <span class="avatar sm mobile-brand" id="top-avatar" aria-hidden="true"></span>
       <h1 class="chat-title" id="chat-title">New Chat</h1>
       <button class="text-btn" id="clear-btn" type="button" aria-label="Clear this chat"><svg class="ic"><use href="#i-eraser"/></svg><span>Clear</span></button>
+      <button class="icon-btn" id="settings-btn" type="button" aria-label="Settings" title="Settings"><svg class="ic"><use href="#i-sliders"/></svg></button>
       <button class="icon-btn" id="export-btn" type="button" aria-label="Download this chat" title="Download chat"><svg class="ic"><use href="#i-download"/></svg></button>
       <button class="icon-btn" id="theme-btn" type="button" aria-label="Switch theme"><svg class="ic" id="theme-icon"><use href="#i-sun"/></svg></button>
     </header>
@@ -356,6 +378,16 @@
       <button class="btn" value="cancel">Cancel</button>
       <button class="btn danger" value="ok" id="dialog-ok">Delete</button>
     </div>
+  </form>
+</dialog>
+<dialog id="settings" aria-labelledby="set-title">
+  <form method="dialog">
+    <h3 id="set-title">Settings</h3>
+    <div class="set-row"><span>Mode</span><div class="seg" data-key="mode"><button type="button" data-val="normal">Normal</button><button type="button" data-val="study">Study</button><button type="button" data-val="coder">Coder</button><button type="button" data-val="funny">Funny</button></div></div>
+    <div class="set-row"><span>Mic language</span><div class="seg" data-key="lang"><button type="button" data-val="hi-IN">Hindi</button><button type="button" data-val="en-IN">English</button></div></div>
+    <div class="set-row"><span>Read replies aloud</span><div class="seg" data-key="autoread"><button type="button" data-val="off">Off</button><button type="button" data-val="on">On</button></div></div>
+    <div class="set-row"><span>Text size</span><div class="seg" data-key="size"><button type="button" data-val="15px">Small</button><button type="button" data-val="16px">Medium</button><button type="button" data-val="18px">Large</button></div></div>
+    <div class="dialog-actions"><button class="btn" value="ok">Done</button></div>
   </form>
 </dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -415,6 +447,14 @@ function getRandomPrompts(count = 4) {
   let busy = false;
   let pendingChatId = null;
   let activeController = null, stoppedByUser = false;
+  const SET_KEY = 'jarvis_settings';
+  const S = Object.assign({ lang: 'hi-IN', autoread: 'off', size: '16px', mode: 'normal' }, (() => { try { return JSON.parse(localStorage.getItem(SET_KEY)) || {}; } catch (e) { return {}; } })());
+  const MODES = {
+    study: 'Explain step by step like a patient teacher, with simple examples.',
+    coder: 'Reply as an expert programmer: concise, practical, code in code blocks.',
+    funny: 'Reply in a fun, witty tone with light humor.'
+  };
+  const modePrefix = () => MODES[S.mode] ? '[Style: ' + MODES[S.mode] + '] ' : '';
 
   function loadChats() {
     try {
@@ -506,6 +546,27 @@ function getRandomPrompts(count = 4) {
       .replace(/(^|[^*\w])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
   }
 
+  const KW = new Set('abstract and as async await break case catch class const continue def default del do elif else enum except export extends finally for from function if implements import in instanceof interface is lambda let new not or package pass private public raise return self static super switch this throw try typeof var void while with yield fn pub use mut impl struct int float double char bool string true false null none undefined nil True False None echo then fi done'.split(' '));
+  const RE_C = /(\/\*[\s\S]*?\*\/|\/\/[^\n]*)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_]\w*)/g;
+  const RE_H = /(\/\*[\s\S]*?\*\/|#[^\n]*)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_]\w*)/g;
+  function highlight(code, lang) {
+    if (/^(html|xml|svg|css|markup)$/.test(lang)) return escapeHtml(code);
+    const re = /^(py|python|sh|bash|shell|zsh|yaml|yml|rb|ruby|toml)$/.test(lang) ? RE_H : RE_C;
+    re.lastIndex = 0;
+    let out = '', last = 0, m;
+    while ((m = re.exec(code))) {
+      out += escapeHtml(code.slice(last, m.index)); last = re.lastIndex;
+      const t = escapeHtml(m[0]);
+      if (m[1]) out += `<span class="tk-c">${t}</span>`;
+      else if (m[2]) out += `<span class="tk-s">${t}</span>`;
+      else if (m[3]) out += `<span class="tk-n">${t}</span>`;
+      else if (KW.has(m[4])) out += `<span class="tk-k">${t}</span>`;
+      else if (code[last] === '(') out += `<span class="tk-f">${t}</span>`;
+      else out += t;
+    }
+    return out + escapeHtml(code.slice(last));
+  }
+
   function renderMarkdown(src) {
     const blocks = [], inl = [];
     let text = String(src).replace(/\u0000/g, '');
@@ -516,27 +577,38 @@ function getRandomPrompts(count = 4) {
     text = escapeHtml(text);
     text = text.replace(/`([^`\n]+)`/g, (_, c) => { inl.push(c); return `\u0000I${inl.length - 1}\u0000`; });
 
-    let out = '', para = [], list = null;
-    const flushPara = () => { if (para.length) { out += '<p>' + para.map(inlineFormat).join('<br>') + '</p>'; para = []; } };
-    const flushList = () => { if (list) { out += `<${list.t}>` + list.items.map(i => `<li>${inlineFormat(i)}</li>`).join('') + `</${list.t}>`; list = null; } };
+    let out = '', para = [], list = null, tbl = [];
+    const flushTable = () => {
+      if (!tbl.length) return;
+      const cells = (r) => r.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+      const rows = tbl.map(cells); tbl = [];
+      const isSep = (r) => r.every(c => /^:?-{2,}:?$/.test(c));
+      const head = rows.length > 1 && isSep(rows[1]) ? rows[0] : null;
+      const body = rows.filter((r, i) => !isSep(r) && !(head && i === 0));
+      out += '<div class="tblwrap"><table>' + (head ? '<thead><tr>' + head.map(c => `<th>${inlineFormat(c)}</th>`).join('') + '</tr></thead>' : '') +
+        '<tbody>' + body.map(r => '<tr>' + r.map(c => `<td>${inlineFormat(c)}</td>`).join('') + '</tr>').join('') + '</tbody></table></div>';
+    };
+    const flushPara = () => { flushTable(); if (para.length) { out += '<p>' + para.map(inlineFormat).join('<br>') + '</p>'; para = []; } };
+    const flushList = () => { flushTable(); if (list) { out += `<${list.t}>` + list.items.map(i => `<li>${inlineFormat(i)}</li>`).join('') + `</${list.t}>`; list = null; } };
 
     for (const line of text.split('\n')) {
       let m;
       if (/^\u0000B\d+\u0000$/.test(line.trim())) { flushPara(); flushList(); out += line.trim(); continue; }
+      if (/^\s*\|.+\|\s*$/.test(line)) { if (!tbl.length) { flushPara(); flushList(); } tbl.push(line); continue; }
       if ((m = line.match(/^\s*[-*\u2022]\s+(.*)$/))) { flushPara(); if (!list || list.t !== 'ul') { flushList(); list = { t: 'ul', items: [] }; } list.items.push(m[1]); continue; }
       if ((m = line.match(/^\s*\d+[.)]\s+(.*)$/)))   { flushPara(); if (!list || list.t !== 'ol') { flushList(); list = { t: 'ol', items: [] }; } list.items.push(m[1]); continue; }
       if ((m = line.match(/^#{1,4}\s+(.*)$/)))       { flushPara(); flushList(); out += `<h4>${inlineFormat(m[1])}</h4>`; continue; }
       if (!line.trim()) { flushPara(); flushList(); continue; }
       flushList(); para.push(line);
     }
-    flushPara(); flushList();
+    flushPara(); flushList(); flushTable();
 
     out = out.replace(/\u0000I(\d+)\u0000/g, (_, i) => `<code>${inl[+i]}</code>`);
     out = out.replace(/\u0000B(\d+)\u0000/g, (_, i) => {
       const b = blocks[+i];
       return `<div class="codeblock"><div class="codehead"><span>${escapeHtml(b.lang || 'code')}</span>` +
              `<button class="chip-btn" type="button" data-copy-code>${icon('copy')}<span>Copy</span></button></div>` +
-             `<pre><code>${escapeHtml(b.code)}</code></pre></div>`;
+             `<pre><code>${highlight(b.code, (b.lang || '').toLowerCase())}</code></pre></div>`;
     });
     return out;
   }
@@ -738,7 +810,7 @@ function getRandomPrompts(count = 4) {
   function renderHistoryList() {
     const q = searchEl.value.trim().toLowerCase();
     historyList.replaceChildren();
-    const items = [...allChats].sort((a, b) => Number(b.id) - Number(a.id))
+    const items = [...allChats].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || Number(b.id) - Number(a.id))
       .filter(c => !q || (c.title || '').toLowerCase().includes(q));
     if (!items.length) {
       const p = document.createElement('p');
@@ -749,7 +821,7 @@ function getRandomPrompts(count = 4) {
     }
     let lastLabel = '';
     items.forEach(chat => {
-      const label = dayLabel(chat.id);
+      const label = chat.pinned ? 'Pinned' : dayLabel(chat.id);
       if (label !== lastLabel) {
         const g = document.createElement('div'); g.className = 'group-label'; g.textContent = label;
         historyList.appendChild(g); lastLabel = label;
@@ -765,7 +837,17 @@ function getRandomPrompts(count = 4) {
       del.setAttribute('aria-label', 'Delete chat: ' + (chat.title || 'New Chat'));
       del.innerHTML = icon('trash');
       del.addEventListener('click', (e) => { e.stopPropagation(); deleteChat(chat.id); });
-      row.append(open, del);
+      del.classList.add('hist-act');
+      const pin = document.createElement('button');
+      pin.type = 'button'; pin.className = 'hist-del hist-act hist-pin' + (chat.pinned ? ' on' : '');
+      pin.setAttribute('aria-label', chat.pinned ? 'Unpin chat' : 'Pin chat'); pin.innerHTML = icon('pin');
+      pin.addEventListener('click', (e) => { e.stopPropagation(); chat.pinned = !chat.pinned; persist(); toast(chat.pinned ? 'Pinned' : 'Unpinned'); });
+      const ren = document.createElement('button');
+      ren.type = 'button'; ren.className = 'hist-del hist-act';
+      ren.setAttribute('aria-label', 'Rename chat'); ren.innerHTML = icon('edit');
+      ren.addEventListener('click', (e) => { e.stopPropagation(); startRename(chat, open); });
+      open.addEventListener('dblclick', () => startRename(chat, open));
+      row.append(open, pin, ren, del);
       historyList.appendChild(row);
     });
   }
@@ -882,7 +964,7 @@ function getRandomPrompts(count = 4) {
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history }),
+        body: JSON.stringify({ message: modePrefix() + text, history, mode: S.mode }),
         signal: controller.signal
       });
       let data = null;
@@ -891,6 +973,7 @@ function getRandomPrompts(count = 4) {
       if (data && data.reply) {
         pushMessage(chatId, 'bot', String(data.reply));
         if (chatId === currentChatId) appendMessage({ role: 'bot', content: String(data.reply) });
+        if (S.autoread === 'on') say(String(data.reply));
       } else if (chatId === currentChatId) {
         if (data && data.error) showError(String(data.error), '', retry);
         else showError("The server didn't send a reply.", data ? JSON.stringify(data).slice(0, 200) : 'HTTP ' + response.status, retry);
@@ -990,6 +1073,44 @@ function getRandomPrompts(count = 4) {
     slot.appendChild(img);
   });
 
+  function say(raw) {
+    if (!('speechSynthesis' in window)) return;
+    const t = raw.replace(/```[\s\S]*?```/g, ' code block ').replace(/[*_`#>]/g, '');
+    const u = new SpeechSynthesisUtterance(t);
+    u.lang = /[\u0900-\u097F]/.test(t) ? 'hi-IN' : 'en-IN';
+    window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+  }
+
+  function startRename(chat, btn) {
+    const inp = document.createElement('input');
+    inp.className = 'hist-edit'; inp.value = chat.title || ''; inp.maxLength = 40;
+    inp.setAttribute('aria-label', 'Chat name');
+    btn.replaceWith(inp); inp.focus(); inp.select();
+    let done = false;
+    const finish = (save) => {
+      if (done) return; done = true;
+      if (save && inp.value.trim()) chat.title = inp.value.trim();
+      persist();
+    };
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') finish(true); else if (e.key === 'Escape') finish(false); });
+    inp.addEventListener('blur', () => finish(true));
+  }
+
+  const setDlg = $('settings');
+  function syncSettingsUI() {
+    setDlg.querySelectorAll('.seg').forEach(g => g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(S[g.dataset.key] === b.dataset.val))));
+    document.documentElement.style.setProperty('--fs', S.size);
+  }
+  setDlg.addEventListener('click', (e) => {
+    const b = e.target.closest('.seg button');
+    if (!b) return;
+    S[b.parentElement.dataset.key] = b.dataset.val;
+    try { localStorage.setItem(SET_KEY, JSON.stringify(S)); } catch (err) {}
+    syncSettingsUI();
+  });
+  $('settings-btn').addEventListener('click', () => { syncSettingsUI(); if (setDlg.showModal) setDlg.showModal(); });
+  syncSettingsUI();
+
   function speak(btn) {
     if (!('speechSynthesis' in window)) { toast('Is browser mein voice support nahi hai'); return; }
     const ss = window.speechSynthesis;
@@ -1024,7 +1145,7 @@ function getRandomPrompts(count = 4) {
     micBtn.addEventListener('click', () => {
       if (on) { rec.stop(); return; }
       rec = new SR();
-      rec.lang = 'hi-IN'; rec.interimResults = true; rec.continuous = false;
+      rec.lang = S.lang; rec.interimResults = true; rec.continuous = false;
       base = input.value.trim() ? input.value.trim() + ' ' : '';
       rec.onstart = () => { on = true; micBtn.classList.add('listening'); };
       rec.onresult = (e) => { let t = ''; for (const r of e.results) t += r[0].transcript; input.value = base + t; autosize(); };
