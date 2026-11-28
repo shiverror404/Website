@@ -371,7 +371,7 @@ def fail(message: str, status: int = 502):
 @app.get("/health")
 def health():
     return {"status": "ok", "bot": BOT_NAME, "stream": True, "image": image_providers_ready(),
-            "stt": bool(GROQ_API_KEY), "tts": edge_tts is not None}
+            "stt": bool(GROQ_API_KEY), "tts": edge_tts is not None, "tts_backup": True}
 
 def build_payload(req: ChatRequest):
     mode = req.mode if req.mode in MODE_NOTES else "normal"
@@ -891,11 +891,67 @@ async def _edge_synth(text: str, voice: str) -> bytes:
             out += ch["data"]
     return bytes(out)
 
+# Backup awaaz: edge-tts Microsoft ki taraf se aksar 403 / NoAudioReceived deta hai (khaas kar purane version par).
+# Tab Google Translate ki awaaz use hoti hai taaki voice kabhi chup na rahe.
+def _split_for_gtts(text: str, limit: int = 180):
+    parts, cur = [], ""
+    for w in text.split():
+        if cur and len(cur) + len(w) + 1 > limit:
+            parts.append(cur)
+            cur = w
+        else:
+            cur = (cur + " " + w).strip()
+    if cur:
+        parts.append(cur)
+    return parts
+
+def _gtts_sync(text: str, lang: str) -> bytes:
+    out = bytearray()
+    for part in _split_for_gtts(text):
+        r = http.get(
+            "https://translate.google.com/translate_tts",
+            params={"ie": "UTF-8", "q": part, "tl": lang, "client": "tw-ob"},
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+                     "Referer": "https://translate.google.com/"},
+            timeout=(5, 10),
+        )
+        if r.status_code != 200 or len(r.content) < 500:
+            raise RuntimeError(f"gtts http {r.status_code}")
+        out += r.content
+    return bytes(out)
+
+_edge_down_until = 0.0  # edge-tts fail ho to kuch der skip (har baar 16 second na lage)
+
+async def synth_with_fallback(spoken: str, voice: str):
+    """(audio, engine, error_text). edge-tts pehle, phir Google backup."""
+    global _edge_down_until
+    last = None
+    if edge_tts is not None and time.time() >= _edge_down_until:
+        for attempt in range(2):
+            try:
+                audio = await asyncio.wait_for(_edge_synth(spoken, voice), timeout=8)
+                if audio:
+                    return audio, "edge", ""
+            except Exception as e:
+                last = e
+                log.warning("edge tts attempt %d failed: %s %s", attempt + 1, type(e).__name__, str(e)[:160])
+                await asyncio.sleep(0.2)
+        _edge_down_until = time.time() + 90
+    elif edge_tts is None:
+        last = RuntimeError("edge-tts install nahi hai")
+    lang = "hi" if (voice.startswith("hi-IN") or re.search(r"[\u0900-\u097F]", spoken)) else "en"
+    try:
+        audio = await run_in_threadpool(_gtts_sync, spoken, lang)
+        if audio:
+            return audio, "google", ""
+    except Exception as e:
+        log.warning("google tts failed: %s %s", type(e).__name__, str(e)[:160])
+        return None, "", f"{type(last).__name__ if last else 'edge skipped'} / {type(e).__name__}"
+    return None, "", "no audio"
+
 @app.post("/tts")
 async def text_to_speech(req: TTSRequest, request: Request):
-    """Text -> mp3 (natural neural awaaz). Fail ho to JSON error; app browser voice par chala jata hai."""
-    if edge_tts is None:
-        return fail("TTS install nahi hai (requirements.txt mein edge-tts add karo).", 501)
+    """Text -> mp3. edge-tts fail ho to Google backup; dono fail hon to JSON error (app browser voice par chala jata hai)."""
     blocked = voice_gate(request, req.client_id)
     if blocked:
         return blocked
@@ -910,24 +966,33 @@ async def text_to_speech(req: TTSRequest, request: Request):
     ck = (voice, spoken)
     audio = _tts_cache.get(ck)
     if audio is None:
-        last = None
-        for attempt in range(2):
-            try:
-                audio = await asyncio.wait_for(_edge_synth(spoken, voice), timeout=15)
-                if audio:
-                    break
-            except Exception as e:
-                last = e
-                await asyncio.sleep(0.3)
+        audio, engine, why = await synth_with_fallback(spoken, voice)
         if not audio:
-            log.warning("tts failed: %s %s", type(last).__name__, str(last)[:120])
-            return fail("Awaaz abhi nahi ban payi.", 502)
+            return fail(f"Awaaz abhi nahi ban payi ({why}).", 502)
+        log.info("tts ok via %s (%d KB)", engine, len(audio) // 1024)
         _tts_cache[ck] = audio
         if len(_tts_cache) > 80:
             _tts_cache.popitem(last=False)
     else:
         _tts_cache.move_to_end(ck)
     return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
+
+@app.get("/tts/check")
+async def tts_check():
+    """Browser mein kholo: https://<tumhara-render-url>/tts/check  -> bataega edge-tts chal raha hai ya nahi."""
+    res = {"edge_tts_installed": edge_tts is not None, "edge": "skipped", "google": "skipped"}
+    if edge_tts is not None:
+        try:
+            a = await asyncio.wait_for(_edge_synth("Hello, voice check.", "en-IN-NeerjaNeural"), timeout=10)
+            res["edge"] = f"ok ({len(a)} bytes)" if a else "empty"
+        except Exception as e:
+            res["edge"] = f"FAIL {type(e).__name__}: {str(e)[:150]}"
+    try:
+        a = await run_in_threadpool(_gtts_sync, "Hello, voice check.", "en")
+        res["google"] = f"ok ({len(a)} bytes)"
+    except Exception as e:
+        res["google"] = f"FAIL {type(e).__name__}: {str(e)[:150]}"
+    return res
 
 INTENT_MODEL = os.getenv("INTENT_MODEL", "llama-3.1-8b-instant")
 INTENT_SYSTEM = (

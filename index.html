@@ -1866,20 +1866,26 @@ function getRandomPrompts(count = 4) {
     const audio = new Audio();
     audio.preload = 'auto'; audio.setAttribute('playsinline', '');
     let queue = [], buf = '', pend = '', sent = 0, finished = true, running = false, gen = 0, curRes = null, idleCb = null;
-    let fails = 0, downUntil = 0;
+    let fails = 0, downUntil = 0, lastWhy = '', warned = false, notedFallback = false, browserBad = false;
 
     async function fetchAudio(text) {
       if (Date.now() < downUntil) return null;            // server TTS abhi band hai -> seedha browser voice
-      const ctrl = new AbortController(), to = setTimeout(() => ctrl.abort(), 15000);
+      const ctrl = new AbortController(), to = setTimeout(() => ctrl.abort(), 25000);
       try {
         const r = await fetch(TTS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, voice: S.voice, client_id: CLIENT_ID }), signal: ctrl.signal });
-        if (!r.ok || r.status === 204) throw new Error('tts ' + r.status);
+        if (!r.ok || r.status === 204) {
+          let why = 'tts ' + r.status;
+          try { const j = await r.json(); if (j && j.error) why += ' ' + j.error; } catch (e) {}
+          throw new Error(why);
+        }
         const b = await r.blob();
-        if (!b.size) throw new Error('empty');
+        if (!b.size) throw new Error('empty audio');
         fails = 0;
-        return URL.createObjectURL(b);
+        return URL.createObjectURL(b.type ? b : new Blob([b], { type: 'audio/mpeg' }));
       } catch (e) {
-        if (++fails >= 2) { downUntil = Date.now() + 60000; fails = 0; }
+        lastWhy = (e && e.message) || 'tts failed';
+        console.warn('[JARVIS] server TTS fail:', lastWhy);
+        if (++fails >= 2) { downUntil = Date.now() + 20000; fails = 0; }
         return null;
       } finally { clearTimeout(to); }
     }
@@ -1900,23 +1906,51 @@ function getRandomPrompts(count = 4) {
       };
       return vs.map((v) => [score(v), v]).sort((a, b) => b[0] - a[0]).map((x) => x[1])[0] || null;
     }
+    const keepUtter = new Set(); // Chrome bug: utterance garbage-collect ho jaye to onend kabhi nahi aata
     function browserSay(text) {
       return new Promise((res) => {
-        if (!('speechSynthesis' in window)) return res();
+        const ss = window.speechSynthesis;
+        if (!ss || typeof SpeechSynthesisUtterance === 'undefined') return res(false);
         const hi = /[\u0900-\u097F]/.test(text), u = new SpeechSynthesisUtterance(text), v = bestVoice(hi);
         if (v) { u.voice = v; u.lang = v.lang; } else u.lang = hi ? 'hi-IN' : 'en-IN';
-        u.rate = 1.02; u.pitch = 1;
-        curRes = res; u.onend = u.onerror = () => res();
-        try { speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) { res(); }
+        u.rate = 1.02; u.pitch = 1; u.volume = 1;
+        let done = false, started = false, wdStart = 0, wdMax = 0;
+        const finish = (ok) => {
+          if (done) return; done = true;
+          clearTimeout(wdStart); clearTimeout(wdMax); keepUtter.delete(u);
+          if (curRes === stopFn) curRes = null;
+          res(ok);
+        };
+        const stopFn = () => finish(true);   // stop() ne roka: bas aage badho (caller gen check karta hai)
+        curRes = stopFn;
+        keepUtter.add(u);
+        u.onstart = () => { started = true; clearTimeout(wdStart); };
+        u.onend = () => finish(true);
+        u.onerror = (e) => finish(!!(e && (e.error === 'interrupted' || e.error === 'canceled')));
+        try { if (ss.speaking || ss.pending) ss.cancel(); } catch (e) {}
+        setTimeout(() => { if (done) return; try { ss.resume(); ss.speak(u); } catch (e) { finish(false); } }, 80); // cancel() ke turant baad speak() Chrome mein gayab ho jata hai
+        wdStart = setTimeout(() => { if (!started) { try { ss.cancel(); } catch (e) {} finish(false); } }, 6000);
+        wdMax = setTimeout(() => { try { ss.cancel(); } catch (e) {} finish(true); }, 8000 + text.length * 120);
       });
     }
     function playUrl(url) {
       return new Promise((res) => {
-        curRes = res;
-        const done = () => { audio.onended = audio.onerror = null; try { URL.revokeObjectURL(url); } catch (e) {} res(); };
-        audio.onended = done; audio.onerror = done;
+        let done = false, wd = 0;
+        const finish = (ok) => {
+          if (done) return; done = true; clearTimeout(wd);
+          audio.onended = audio.onerror = audio.onplaying = null;
+          try { URL.revokeObjectURL(url); } catch (e) {}
+          if (curRes === stopFn) curRes = null;
+          res(ok);
+        };
+        const stopFn = () => finish(true);
+        curRes = stopFn;
+        audio.onended = () => finish(true);
+        audio.onerror = () => finish(false);           // decode/network error -> browser voice
+        audio.onplaying = () => clearTimeout(wd);
         audio.src = url;
-        const p = audio.play(); if (p && p.catch) p.catch(done);
+        wd = setTimeout(() => { try { audio.pause(); } catch (e) {} finish(false); }, 8000);
+        const p = audio.play(); if (p && p.catch) p.catch(() => finish(false)); // autoplay block -> browser voice (pehle yahan chup-chaap skip ho jata tha)
       });
     }
 
@@ -1931,7 +1965,14 @@ function getRandomPrompts(count = 4) {
         const item = queue.shift(), url = await item.p;
         if (g !== gen) { if (url) try { URL.revokeObjectURL(url); } catch (e) {} break; }
         onStart();
-        await (url ? playUrl(url) : browserSay(item.text));
+        if (!url && !notedFallback) { notedFallback = true; toast('Natural awaaz abhi nahi mili, browser voice chala raha hoon'); }
+        let ok = false;
+        if (url) ok = await playUrl(url);
+        if (g !== gen) break;
+        if (!ok && !browserBad) ok = await browserSay(item.text);
+        if (g !== gen) break;
+        if (!ok && !url) browserBad = true; // browser voice bhi chup hai: har vakye par 6 second mat ruko
+        if (!ok && !warned) { warned = true; toast('Awaaz nahi chal paayi. Phone ka volume / silent mode check karo' + (lastWhy ? ' (' + lastWhy.slice(0, 60) + ')' : '')); }
       }
       if (g === gen) { running = false; if (finished && !queue.length) idle(); }
     }
@@ -1946,7 +1987,7 @@ function getRandomPrompts(count = 4) {
     }
     return {
       active: () => !finished || running || queue.length > 0,
-      begin(cb) { this.stop(); finished = false; idleCb = cb || null; },
+      begin(cb) { this.stop(); finished = false; idleCb = cb || null; browserBad = false; },
       feed(chunk) { if (finished) return; buf += chunk; take(false); },
       end() { if (finished) return; finished = true; take(true); if (!running && !queue.length) idle(); },
       stop() {
@@ -1959,7 +2000,7 @@ function getRandomPrompts(count = 4) {
       },
       unlock() { // user ke tap par hi audio chalane ki ijazat milti hai (iPhone/Chrome rule)
         try { audio.src = SILENT_WAV; const p = audio.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
-        try { speechSynthesis.getVoices(); } catch (e) {}
+        try { const ss = window.speechSynthesis; if (ss) { ss.getVoices(); const u = new SpeechSynthesisUtterance(' '); u.volume = 0; ss.speak(u); } } catch (e) {}
       }
     };
   })();
