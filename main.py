@@ -89,10 +89,11 @@ OWNER_PROFILE = (
 )
 
 NO_FAKE_IMAGE_RULE = (
-    "IMAGE RULES:\n"
-    "- You cannot draw or attach images in chat. NEVER write markdown images, image links or fake attachments.\n"
-    "- If the user wants an image or logo, tell them in one short line to tap the sparkle button near the message box "
-    "or start the message with /image, and JARVIS will create it.\n"
+    "IMAGE ABILITY:\n"
+    "- JARVIS CAN create images. When the user asks what you can do, mention image creation too.\n"
+    "- The app creates the image automatically when the user clearly asks for one, for example: ek robot ki image banao.\n"
+    "- If the user asks whether you can make images, say yes and tell them to just describe what they want, with one short example.\n"
+    "- You never draw inside chat text. NEVER write markdown images, image links or fake attachments.\n"
 )
 
 LANGUAGE_RULE = (
@@ -693,6 +694,51 @@ def make_image(req: ImageRequest, request: Request):
     log.info("image ok via %s (%d KB)", provider, len(data) // 1024)
     return {"image": f"data:{mime};base64," + base64.b64encode(data).decode("ascii"),
             "prompt": final, "seed": seed, "width": w, "height": h}
+
+INTENT_MODEL = os.getenv("INTENT_MODEL", "llama-3.1-8b-instant")
+INTENT_SYSTEM = (
+    "You are the router for JARVIS, a chat app that can also create images. "
+    "Decide if the user's LATEST message is a request to CREATE, GENERATE, DRAW or EDIT a picture right now "
+    "(image, photo, logo, poster, wallpaper, DP, art and similar). Messages may be Hindi, Hinglish or English with typos. "
+    "Answer image ONLY when the user clearly wants a new picture made. "
+    "Answer chat for: questions about whether or how you can make images (for example: image bana sakte ho, Image create ???, image kaise banate hain), "
+    "questions about existing images, code or design help, and normal conversation. "
+    "Use the recent chat for follow-ups like: isko anime style mein bana do. Then write a complete standalone prompt. "
+    "Reply with ONLY one JSON object: "
+    '{"intent":"image" or "chat","prompt":"standalone image description, only if image","style":"auto|realistic|cinematic|anime|digital|3d|sketch","ratio":"square|portrait|landscape"}. '
+    "ratio: phone wallpaper, story or poster means portrait; desktop wallpaper, banner or thumbnail means landscape; logo, DP or profile picture means square; otherwise square. "
+    "style: pick one only if the user asked for it or clearly implies it, else auto."
+)
+
+class IntentRequest(BaseModel):
+    message: str
+    history: list = []
+
+@app.post("/intent")
+def image_intent(req: IntentRequest):
+    """Message image banwana chahta hai ya sirf baat kar raha hai? Fail ho to hamesha 'chat'."""
+    if not GROQ_API_KEY:
+        return {"intent": "chat"}
+    try:
+        ctx = "\n".join(f"{'user' if m.get('role') == 'user' else 'assistant'}: {str(m.get('content', ''))[:200]}"
+                        for m in (req.history or [])[-4:] if isinstance(m, dict))
+        payload = {
+            "messages": [{"role": "system", "content": INTENT_SYSTEM},
+                         {"role": "user", "content": f"Recent chat:\n{ctx}\n\nLatest user message:\n{(req.message or '')[:500]}"}],
+            "temperature": 0, "max_tokens": 600,
+        }
+        raw = call_groq(payload, [INTENT_MODEL, DEFAULT_MODEL])
+        data = json.loads(re.search(r"\{.*\}", raw, re.S).group(0))
+        if data.get("intent") != "image":
+            return {"intent": "chat"}
+        prompt = str(data.get("prompt") or "").strip()[:500]
+        return {"intent": "image", "prompt": prompt,
+                "style": data.get("style") if data.get("style") in IMAGE_STYLES else "auto",
+                "ratio": data.get("ratio") if data.get("ratio") in IMAGE_SIZES else "square"}
+    except Exception:
+        log.warning("intent check failed")
+        return {"intent": "chat"}
+
 
 class BlockRequest(BaseModel):
     client_id: str

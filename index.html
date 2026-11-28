@@ -327,22 +327,6 @@
 
 
   /* ---------- image generation ---------- */
-  .tool.on { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
-  .field.imaging { border-color: color-mix(in srgb, var(--accent) 65%, transparent); box-shadow: 0 0 0 3px var(--focus), 0 0 30px var(--glow-soft); }
-  .imgbar { display: flex; flex-direction: column; gap: 8px; padding: 0 4px 10px 0; }
-  .imgbar-head { display: flex; align-items: center; justify-content: space-between; font-size: .78rem; font-weight: 700; color: var(--accent); }
-  .imgbar-title { display: inline-flex; align-items: center; gap: 6px; }
-  .imgbar-title .ic { width: 16px; height: 16px; }
-  .imgbar-x { width: 28px; height: 28px; border-radius: 8px; color: var(--muted); font-size: 20px; line-height: 1; }
-  .imgbar-x:hover { background: var(--surface-2); color: var(--text); }
-  .chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 1px; }
-  .chips::-webkit-scrollbar { display: none; }
-  .chip { flex: none; display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font-size: .82rem; font-weight: 600; transition: border-color .15s, color .15s; }
-  .chip:hover { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); color: var(--text); }
-  .chip[aria-pressed="true"] { background: linear-gradient(120deg, var(--accent), var(--accent-2)); color: var(--on-accent); border-color: transparent; }
-  .chip i { display: inline-block; border: 1.6px solid currentColor; border-radius: 2px; }
-  .chip i.sq { width: 11px; height: 11px; } .chip i.pt { width: 9px; height: 14px; } .chip i.ls { width: 15px; height: 9px; }
-
   .imgcard { width: min(100%, 460px); }
   .imgframe { position: relative; width: 100%; aspect-ratio: var(--ar, 1 / 1); max-height: 70dvh; border-radius: 16px; overflow: hidden; background: var(--surface-2); border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line)); box-shadow: 0 10px 34px rgba(0, 0, 0, .28), 0 0 30px var(--glow-soft); }
   .imgframe img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; animation: imgIn .45s ease-out both; }
@@ -532,30 +516,12 @@
       <button class="jump" id="jump-btn" type="button" aria-label="Scroll to latest message" hidden><svg class="ic"><use href="#i-down"/></svg></button>
       <div class="composer-inner">
         <div class="field">
-          <div class="imgbar" id="imgbar" hidden>
-            <div class="imgbar-head"><span class="imgbar-title"><svg class="ic"><use href="#i-imagine"/></svg>Image mode</span><button class="imgbar-x" id="imgbar-x" type="button" aria-label="Image mode band karo">&times;</button></div>
-            <div class="chips" data-key="imgRatio" role="group" aria-label="Image size">
-              <button class="chip" type="button" data-val="square" aria-pressed="true"><i class="sq"></i>Square</button>
-              <button class="chip" type="button" data-val="portrait" aria-pressed="false"><i class="pt"></i>Portrait</button>
-              <button class="chip" type="button" data-val="landscape" aria-pressed="false"><i class="ls"></i>Landscape</button>
-            </div>
-            <div class="chips" data-key="imgStyle" role="group" aria-label="Image style">
-              <button class="chip" type="button" data-val="auto" aria-pressed="true">Auto</button>
-              <button class="chip" type="button" data-val="realistic" aria-pressed="false">Realistic</button>
-              <button class="chip" type="button" data-val="cinematic" aria-pressed="false">Cinematic</button>
-              <button class="chip" type="button" data-val="anime" aria-pressed="false">Anime</button>
-              <button class="chip" type="button" data-val="digital" aria-pressed="false">Digital art</button>
-              <button class="chip" type="button" data-val="3d" aria-pressed="false">3D</button>
-              <button class="chip" type="button" data-val="sketch" aria-pressed="false">Sketch</button>
-            </div>
-          </div>
           <div class="attach-strip" id="attach-strip" hidden></div>
           <label class="sr-only" for="user-input">Message JARVIS</label>
           <textarea id="user-input" rows="1" placeholder="Message JARVIS…" enterkeyhint="send" autocomplete="off"></textarea>
           <input type="file" id="file-input" accept="image/*" multiple hidden>
           <div class="field-bar">
             <button class="tool attach" id="attach-btn" type="button" aria-label="Photo bhejein" title="Photo bhejein"><svg class="ic"><use href="#i-image"/></svg></button>
-            <button class="tool" id="img-btn" type="button" aria-label="Image banao" aria-pressed="false" title="Image banao"><svg class="ic"><use href="#i-imagine"/></svg></button>
             <span class="grow"></span>
             <button class="tool" id="voice-btn" type="button" aria-label="Voice mode" title="Voice mode"><svg class="ic"><use href="#i-wave"/></svg></button>
             <button class="tool" id="mic-btn" type="button" aria-label="Speak your message" title="Bol kar likhein"><svg class="ic"><use href="#i-mic"/></svg></button>
@@ -1219,7 +1185,8 @@ function getRandomPrompts(count = 4) {
   const IMG_VERB = /\b(ban[aeiou]\w*|bn[aeiou]\w*|generate|create|make|draw|design|paint|imagine|render)\b/i;
   const IMG_NOT = /\b(kaise|kaisey|kese|how|explain|samjhao|code|script|program|python|html|css|svg|javascript|tutorial|api|photoshop|canva|powerpoint|ppt|excel|flowchart|diagram|graph|chart|table)\b/i;
   const fullImg = new WeakMap();
-  let imageMode = false, imaging = false, imgPh = null;
+  const INTENT_URL = API_URL.replace(/\/chat$/, '/intent');
+  let imaging = false, imgPh = null;
 
   const cleanImgPrompt = (t) => String(t).replace(IMG_PREFIX, '').trim();
   function wantsImage(t) {
@@ -1292,16 +1259,38 @@ function getRandomPrompts(count = 4) {
     chat.messages.pop();
     if (chatId === currentChatId && thread.lastElementChild) thread.lastElementChild.remove();
     const um = chat.messages[chat.messages.length - 1];
-    const gen = { style: S.imgStyle || 'auto', ratio: S.imgRatio || 'square' };
-    if (um && um.role === 'user') um.gen = gen;
+    const gen = { style: 'auto', ratio: 'square' };
+    if (um && um.role === 'user') { um.gen = gen; um.intent = 'image'; }
     persist();
     await generateImage(chatId, text, gen);
+  }
+
+  function mayWantImage(chat, text) {
+    if (IMG_PREFIX.test(text) || IMG_NOUN.test(text)) return true;
+    const lb = chat.messages[chat.messages.length - 2];
+    return !!(lb && lb.imgPrompt && text.length < 160);
+  }
+  async function classifyImage(chat, text) {
+    if (IMG_PREFIX.test(text)) return { intent: 'image', style: 'auto', ratio: 'square' };
+    const controller = new AbortController();
+    activeController = controller;
+    const tm = setTimeout(() => controller.abort(), 8000);
+    try {
+      const hist = chat.messages.slice(-5, -1).map(sanitizeForServer).filter((m) => m.content);
+      const res = await fetch(INTENT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal, body: JSON.stringify({ message: text, history: hist }) });
+      if (!res.ok) throw new Error('http');
+      return await res.json();
+    } catch (e) {
+      if (stoppedByUser) return null;
+      return !/\?/.test(text) && wantsImage(text) ? { intent: 'image', style: 'auto', ratio: 'square' } : null;
+    } finally { clearTimeout(tm); }
   }
 
   async function generateImage(chatId, text, gen) {
     const chat = getChat(chatId);
     if (!chat) return;
-    const prompt = cleanImgPrompt(text);
+    const typed = cleanImgPrompt(text) || text;
+    const prompt = (gen.prompt || typed).slice(0, 500);
     busy = true; imaging = true; pendingChatId = chatId;
     autosize(); clearError(); updateTyping();
     imgPh = buildImgPlaceholder(gen.ratio);
@@ -1329,7 +1318,7 @@ function getRandomPrompts(count = 4) {
         const stored = pushMessage(chatId, 'bot', 'Image banayi: ' + prompt.slice(0, 200));
         if (stored) {
           stored.imgPrompt = String(data.prompt || prompt).slice(0, 900);
-          stored.userPrompt = prompt.slice(0, 300);
+          stored.userPrompt = typed.slice(0, 300);
           stored.img = thumb; stored.ratio = gen.ratio || 'square'; stored.style = gen.style || 'auto'; stored.ts = Date.now();
           if (!thumb) stored.imgGone = true;
           fullImg.set(stored, data.image);
@@ -1380,34 +1369,12 @@ function getRandomPrompts(count = 4) {
   $('lb-dl').addEventListener('click', () => { if (lbMsg) downloadImage(lbMsg); });
   lightbox.addEventListener('click', (e) => { if (e.target === lightbox) lightbox.close(); });
 
-  // image mode toggle + size/style chips
-  const imgBtn = $('img-btn'), imgBar = $('imgbar'), fieldEl = imgBar.closest('.field');
-  const DEFAULT_PLACEHOLDER = input.getAttribute('placeholder');
-  function setImageMode(on) {
-    imageMode = on;
-    imgBar.hidden = !on; imgBtn.classList.toggle('on', on); imgBtn.setAttribute('aria-pressed', String(on)); fieldEl.classList.toggle('imaging', on);
-    input.setAttribute('placeholder', on ? 'Kya image banani hai? Jaise: neon city mein ek robot…' : DEFAULT_PLACEHOLDER);
-    if (on) input.focus();
-  }
-  function syncImgChips() {
-    imgBar.querySelectorAll('.chips').forEach((g) => g.querySelectorAll('.chip').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.val === (S[g.dataset.key] || '')))));
-  }
-  imgBtn.addEventListener('click', () => setImageMode(!imageMode));
-  $('imgbar-x').addEventListener('click', () => setImageMode(false));
-  imgBar.addEventListener('click', (e) => {
-    const b = e.target.closest('.chip'); if (!b) return;
-    S[b.parentElement.dataset.key] = b.dataset.val; saveSettings(); syncImgChips();
-  });
-  syncImgChips();
-
   async function sendMessage(textOverride) {
     if (busy) return;
     const fromBox = typeof textOverride !== 'string';
     const imgs = fromBox ? pendingImages.slice() : [];
     const text = (fromBox ? input.value : textOverride).trim() || (imgs.length ? 'Is photo ke baare mein batao.' : '');
     if (!text) return;
-    const wantImg = !voiceOn && !imgs.length && (imageMode || wantsImage(text));
-    if (wantImg && !cleanImgPrompt(text)) { toast('Image ka description bhi likho'); return; }
     const chat = getChat();
     if (!chat) return;
     clearError();
@@ -1415,7 +1382,6 @@ function getRandomPrompts(count = 4) {
     sendBtn.addEventListener('animationend', () => sendBtn.classList.remove('pulse'), { once: true });
     const stored = pushMessage(chat.id, 'user', text);
     if (stored && imgs.length) { stored.thumbs = imgs.map((i) => i.thumb); imageCache.set(stored, imgs.map((i) => i.full)); }
-    if (stored && wantImg) stored.gen = { style: S.imgStyle || 'auto', ratio: S.imgRatio || 'square' };
     if (fromBox) { pendingImages = []; renderStrip(); }
     input.value = '';
     autosize();
@@ -1427,7 +1393,23 @@ function getRandomPrompts(count = 4) {
     const chat = getChat(chatId);
     if (!chat) return;
     const lm = chat.messages[chat.messages.length - 1];
-    if (lm && lm.role === 'user' && lm.gen) return generateImage(chatId, text, lm.gen);
+    if (lm && lm.role === 'user') {
+      if (lm.intent === undefined) {
+        lm.intent = 'chat';
+        if (!voiceOn && !(lm.thumbs && lm.thumbs.length) && mayWantImage(chat, text)) {
+          busy = true; pendingChatId = chatId; autosize(); updateTyping();
+          const r = await classifyImage(chat, text);
+          busy = false; pendingChatId = null;
+          if (stoppedByUser) { stoppedByUser = false; updateTyping(); autosize(); return; }
+          if (!getChat(chatId)) return;
+          if (r && r.intent === 'image') {
+            lm.intent = 'image';
+            lm.gen = { style: r.style || 'auto', ratio: r.ratio || 'square', prompt: r.prompt ? String(r.prompt).slice(0, 500) : '' };
+          }
+        }
+      }
+      if (lm.gen) return generateImage(chatId, text, lm.gen);
+    }
     busy = true; pendingChatId = chatId;
     autosize();
     clearError();
@@ -1667,7 +1649,6 @@ function getRandomPrompts(count = 4) {
       chat.messages.length = idx;
       const st = pushMessage(chat.id, 'user', v);
       if (st && m.thumbs) { st.thumbs = m.thumbs; const fl = imageCache.get(m); if (fl) imageCache.set(st, fl); }
-      if (st && m.gen) st.gen = m.gen;
       persist(); renderChat();
       requestReply(chat.id, v);
     };
