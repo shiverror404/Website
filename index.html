@@ -1215,9 +1215,9 @@ function getRandomPrompts(count = 4) {
   const RATIO_CSS = { square: '1 / 1', portrait: '9 / 16', landscape: '16 / 9' };
   const IMG_STAGES = ['Idea samajh raha hoon…', 'Rang aur light set kar raha hoon…', 'Details bana raha hoon…', 'Bas finishing touches…', 'Thoda time lag raha hai, server busy ho sakta hai…'];
   const IMG_PREFIX = /^\/(image|img|imagine|draw)\b\s*/i;
-  const IMG_NOUN = /\b(image|images|img|photo|photos|pic|pics|picture|pictures|tasveer|tasvir|wallpaper|logo|poster|painting|artwork|illustration|portrait|drawing|avatar|thumbnail|banner)\b/i;
-  const IMG_VERB = /\b(bana|banao|banado|bana\s?do|bana\s?de|banade|bnao|bna|bnado|banaiye|generate|create|make|draw|design|paint|imagine|render)\b/i;
-  const IMG_NOT = /\b(kaise|kaisey|how|why|kyun|kyu|explain|samjhao|code|script|program|python|html|css|svg|javascript|java|tutorial|api|photoshop|canva|powerpoint|ppt|excel|word|flowchart|diagram|graph|chart|table|name|caption|essay)\b/i;
+  const IMG_NOUN = /\b(image|images|img|photo|photos|foto|pic|pics|picture|pictures|tasveer|tasvir|wallpaper|logo|poster|painting|artwork|illustration|portrait|drawing|avatar|thumbnail|banner|dp|pfp|sticker|icon)\b/i;
+  const IMG_VERB = /\b(ban[aeiou]\w*|bn[aeiou]\w*|generate|create|make|draw|design|paint|imagine|render)\b/i;
+  const IMG_NOT = /\b(kaise|kaisey|kese|how|explain|samjhao|code|script|program|python|html|css|svg|javascript|tutorial|api|photoshop|canva|powerpoint|ppt|excel|flowchart|diagram|graph|chart|table)\b/i;
   const fullImg = new WeakMap();
   let imageMode = false, imaging = false, imgPh = null;
 
@@ -1282,6 +1282,20 @@ function getRandomPrompts(count = 4) {
     card.appendChild(fr); col.appendChild(card); el.appendChild(col);
     el._status = fr.querySelector('.imgstatus');
     return el;
+  }
+
+  async function rescueFakeImage(chatId, text, images) {
+    if (images && images.length) return;
+    const chat = getChat(chatId); if (!chat) return;
+    const last = chat.messages[chat.messages.length - 1];
+    if (!last || last.role !== 'bot' || last.imgPrompt || !/!\[[^\]]*\]\((?!https?:\/\/)[^)]*\)/.test(last.content)) return;
+    chat.messages.pop();
+    if (chatId === currentChatId && thread.lastElementChild) thread.lastElementChild.remove();
+    const um = chat.messages[chat.messages.length - 1];
+    const gen = { style: S.imgStyle || 'auto', ratio: S.imgRatio || 'square' };
+    if (um && um.role === 'user') um.gen = gen;
+    persist();
+    await generateImage(chatId, text, gen);
   }
 
   async function generateImage(chatId, text, gen) {
@@ -1430,7 +1444,7 @@ function getRandomPrompts(count = 4) {
     const retry = () => { clearError(); requestReply(chatId, text); };
 
     try {
-      if (await tryStream(chatId, text, history, controller.signal, arm, images)) return;
+      if (await tryStream(chatId, text, history, controller.signal, arm, images)) { await rescueFakeImage(chatId, text, images); return; }
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -88,6 +88,13 @@ OWNER_PROFILE = (
     "- Do NOT invent other personal details.\n"
 )
 
+NO_FAKE_IMAGE_RULE = (
+    "IMAGE RULES:\n"
+    "- You cannot draw or attach images in chat. NEVER write markdown images, image links or fake attachments.\n"
+    "- If the user wants an image or logo, tell them in one short line to tap the sparkle button near the message box "
+    "or start the message with /image, and JARVIS will create it.\n"
+)
+
 LANGUAGE_RULE = (
     "LANGUAGE RULES:\n"
     "- Reply ONLY in English or Hinglish (Roman script).\n"
@@ -115,6 +122,7 @@ def system_prompt(style: str, user_name: str) -> str:
         f"You are {BOT_NAME}, created by {OWNER_NAME}.\n"
         f"{LANGUAGE_RULE}\n"
         f"{TIP_FORMAT_RULE}\n"
+        f"{NO_FAKE_IMAGE_RULE}\n"
         f"{OWNER_PROFILE}\n"
         f"Personality: {persona}\n\n"
         f"{EXAMPLES}"
