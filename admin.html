@@ -89,6 +89,9 @@
   .switch input::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--muted);transition:.2s}
   .switch input:checked{background:color-mix(in srgb,var(--warn) 35%,transparent);border-color:var(--warn)}
   .switch input:checked::after{left:20px;background:var(--warn)}
+  .switch.good input:checked{background:color-mix(in srgb,var(--good) 35%,transparent);border-color:var(--good)}
+  .switch.good input:checked::after{background:var(--good)}
+  .hint{color:var(--muted);font-size:.78rem}
   .banner{padding:9px 13px;border-radius:12px;background:color-mix(in srgb,var(--warn) 16%,transparent);border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);font-size:.88rem}
 
   /* users */
@@ -139,6 +142,10 @@
     <div class="maint-row">
       <input type="text" id="pause-msg" maxlength="200" placeholder="Users ko dikhne wala message (optional)">
       <button class="btn primary sm" id="save-maint" type="button">Save</button>
+    </div>
+    <div class="maint-row">
+      <label class="switch good"><input type="checkbox" id="images-on"><span>Image generation ON</span></label>
+      <span class="hint" id="img-hint"></span>
     </div>
     <div class="banner" id="maint-banner" hidden>Maintenance ON hai: abhi koi bhi user chat nahi kar sakta.</div>
   </div>
@@ -229,7 +236,7 @@
     const cards = [
       ['Online now', t.online_now, 'live'], ['Active today', t.active_today], ['New users today', t.new_today],
       ['Messages today', t.messages_today], ['Active (7 days)', t.active_7d], ['Total users', t.users],
-      ['Total messages', t.messages], ['Blocked', t.blocked]
+      ['Total messages', t.messages], ['Images today', t.images_today], ['Total images', t.images_total], ['Blocked', t.blocked]
     ];
     const box = $('stats'); box.replaceChildren();
     cards.forEach(([l, n, cls]) => { const c = el('div', 'card stat ' + (cls || '')); c.append(el('div', 'n', fmtNum(n)), el('div', 'l', l)); box.appendChild(c); });
@@ -237,6 +244,10 @@
     $('paused').checked = !!DATA.settings.paused;
     if (document.activeElement !== $('pause-msg')) $('pause-msg').value = DATA.settings.pause_message || '';
     $('maint-banner').hidden = !DATA.settings.paused;
+    $('images-on').checked = DATA.settings.images_enabled !== false;
+    $('img-hint').textContent = DATA.settings.image_provider === 'none'
+      ? 'Setup baaki: Render mein TOGETHER_API_KEY ya HF_TOKEN daalo'
+      : 'Provider: ' + DATA.settings.image_provider;
 
     barChart($('chart-msgs'), DATA.series, 'messages'); barChart($('chart-users'), DATA.series, 'users');
     const sum = (k) => DATA.series.reduce((a, d) => a + d[k], 0);
@@ -326,10 +337,17 @@
   }));
   $('save-maint').addEventListener('click', async () => {
     try {
-      await api('/admin/settings', { method: 'POST', body: JSON.stringify({ paused: $('paused').checked, pause_message: $('pause-msg').value }) });
+      await api('/admin/settings', { method: 'POST', body: JSON.stringify({ paused: $('paused').checked, pause_message: $('pause-msg').value, images_enabled: $('images-on').checked }) });
       DATA.settings.paused = $('paused').checked; DATA.settings.pause_message = $('pause-msg').value;
       $('maint-banner').hidden = !DATA.settings.paused; toast($('paused').checked ? 'Maintenance ON' : 'Saved');
     } catch (err) { toast(err.message || 'Failed'); }
+  });
+  $('images-on').addEventListener('change', async () => {
+    const on = $('images-on').checked;
+    try {
+      await api('/admin/settings', { method: 'POST', body: JSON.stringify({ paused: DATA.settings.paused, pause_message: DATA.settings.pause_message || '', images_enabled: on }) });
+      DATA.settings.images_enabled = on; toast(on ? 'Image generation ON' : 'Image generation OFF');
+    } catch (err) { $('images-on').checked = !on; toast(err.message || 'Failed'); }
   });
   function startTimer() { clearInterval(timer); timer = setInterval(() => { if (document.visibilityState === 'visible') load(false); }, 30000); }
 
