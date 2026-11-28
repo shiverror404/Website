@@ -10,7 +10,7 @@ import threading
 import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from typing import Optional
+from urllib.parse import quote
 
 import requests
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -64,7 +64,6 @@ STYLES = {
         "5. LANGUAGE: if they write English, reply in English. If they write Hinglish, reply in Hinglish.\n"
         "6. EXTREME SLANG: If the user uses extreme slang or playfully abuses (like 'bc', 'bhai', 'madarchod'), reply with matching Gen-Z energy, but NEVER abuse back. Keep it light and funny.\n"
         "Never say 'sir'. Never say 'How can I assist you'. Do not assume the user's gender.\n"
-        "You CAN create images. If someone asks whether you can, say yes and tell them to just write something like 'ek sher ki image banao' or tap the palette button near the photo button. Never claim you cannot make images.\n"
         "Do NOT give a 'Tip' unless they explicitly ask for advice or help.\n"
     )
 }
@@ -199,7 +198,7 @@ def track(req, request: Request) -> bool:
     now = int(time.time())
     name = (req.user_name or "").strip()[:24]
     device = device_from_ua(request.headers.get("user-agent", ""))
-    mode = req.mode if req.mode in MODE_NOTES else "normal"
+    mode = req.mode if (req.mode in MODE_NOTES or req.mode == "image") else "normal"
     with db() as c:
         row = c.execute("SELECT blocked FROM users WHERE client_id=?", (cid,)).fetchone()
         if row is None:
@@ -341,7 +340,7 @@ def fail(message: str, status: int = 502):
 @app.get("/")
 @app.get("/health")
 def health():
-    return {"status": "ok", "bot": BOT_NAME, "stream": True, "image": bool(image_provider())}
+    return {"status": "ok", "bot": BOT_NAME, "stream": True, "image": image_providers_ready()}
 
 def build_payload(req: ChatRequest):
     mode = req.mode if req.mode in MODE_NOTES else "normal"
@@ -478,283 +477,214 @@ def chat_stream(req: ChatRequest, request: Request):
 
     return StreamingResponse(gen(), media_type="text/event-stream", headers=headers)
 
-# ---------------------------------------------------------------------------
-# Image generation (FLUX). Groq image nahi banata, isliye alag provider chahiye:
-#   TOGETHER_API_KEY -> Together AI (recommended, sasta aur fast)
-#   HF_TOKEN         -> Hugging Face Inference Providers
-# Model badalne ke liye Render > Environment: IMAGE_MODEL_FAST / IMAGE_MODEL_HD
-# Hum image par koi watermark ya text overlay nahi lagate. Output model ka original hota hai.
-# ---------------------------------------------------------------------------
-TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY", "")
-HF_TOKEN = os.getenv("HF_TOKEN", "")
-IMAGE_PROVIDER = os.getenv("IMAGE_PROVIDER", "").strip().lower()      # together | huggingface (khaali = auto)
-IMAGE_MODEL_FAST = os.getenv("IMAGE_MODEL_FAST", "black-forest-labs/FLUX.1-schnell")
-IMAGE_MODEL_HD = os.getenv("IMAGE_MODEL_HD", "black-forest-labs/FLUX.1-dev")
-IMAGE_DAILY_LIMIT = int(os.getenv("IMAGE_DAILY_LIMIT", "12"))          # ek device ki roz ki limit
-IMAGE_GLOBAL_DAILY = int(os.getenv("IMAGE_GLOBAL_DAILY", "300"))       # poori site ki roz ki limit
-TOGETHER_URL = "https://api.together.xyz/v1/images/generations"
-HF_URL = "https://router.huggingface.co/hf-inference/models/"
-_img_sem = threading.BoundedSemaphore(int(os.getenv("IMAGE_CONCURRENCY", "3")))
 
-IMAGE_RATIOS = {"1:1": (1024, 1024), "3:4": (864, 1152), "16:9": (1344, 768), "9:16": (768, 1344)}
+# ---------------------------------------------------------------------------
+# IMAGE GENERATION (free, watermark-free setup)
+#
+# Providers ek ke baad ek try hote hain (IMAGE_PROVIDERS env se order badal sakte ho).
+# Jo provider ki key set nahi hai wo automatically skip ho jata hai.
+#
+#   pollinations_key : POLLINATIONS_API_KEY  (free key: https://enter.pollinations.ai) -> FLUX, NO watermark
+#   huggingface      : HF_TOKEN              (free token: huggingface.co/settings/tokens) -> FLUX.1-schnell
+#   cloudflare       : CF_ACCOUNT_ID + CF_API_TOKEN (free daily quota) -> FLUX.1-schnell
+#   pollinations     : bina key ka last backup (anonymous tier: slow, kabhi kabhi watermark aa sakta hai)
+# ---------------------------------------------------------------------------
+POLLINATIONS_API_KEY = os.getenv("POLLINATIONS_API_KEY", "")
+POLLINATIONS_MODEL = os.getenv("POLLINATIONS_MODEL", "flux")
+HF_TOKEN = os.getenv("HF_TOKEN", "")
+HF_IMAGE_URL = os.getenv("HF_IMAGE_URL", "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell")
+CF_ACCOUNT_ID = os.getenv("CF_ACCOUNT_ID", "")
+CF_API_TOKEN = os.getenv("CF_API_TOKEN", "")
+CF_IMAGE_MODEL = os.getenv("CF_IMAGE_MODEL", "@cf/black-forest-labs/flux-1-schnell")
+IMAGE_PROVIDERS = [p.strip() for p in os.getenv("IMAGE_PROVIDERS", "pollinations_key,huggingface,cloudflare,pollinations").split(",") if p.strip()]
+IMAGE_DAILY_LIMIT = int(os.getenv("IMAGE_DAILY_LIMIT", "30"))   # ek device ki 24 ghante ki limit (free quota bachane ke liye)
+IMAGE_GAP_SECONDS = int(os.getenv("IMAGE_GAP_SECONDS", "6"))    # do images ke beech minimum gap
+IMAGE_SLOTS = threading.BoundedSemaphore(int(os.getenv("IMAGE_CONCURRENCY", "3")))
+
+IMAGE_SIZES = {"square": (1024, 1024), "portrait": (768, 1344), "landscape": (1344, 768)}
 IMAGE_STYLES = {
     "auto": "",
-    "photo": "ultra realistic photograph, shot on a 35mm lens, natural lighting, tack sharp focus, fine natural detail, true-to-life colors",
-    "cinematic": "cinematic film still, dramatic lighting, anamorphic lens, shallow depth of field, rich color grading, epic composition",
-    "anime": "high quality anime illustration, clean line art, vibrant colors, detailed painterly background, studio quality",
-    "3d": "polished 3D render, soft global illumination, smooth materials, highly detailed, Pixar-like charm",
-    "art": "digital concept art, intricate details, painterly brush work, striking composition, professional illustration",
-    "oil": "classical oil painting, visible brush strokes, rich textures, warm museum-quality finish",
-    "minimal": "minimal flat vector illustration, clean geometric shapes, limited harmonious palette, modern design",
+    "realistic": "photorealistic, ultra detailed, natural lighting, sharp focus, shot on 85mm lens, high dynamic range",
+    "cinematic": "cinematic still, dramatic lighting, anamorphic lens, subtle film grain, color graded, epic composition",
+    "anime": "high quality anime illustration, vibrant colors, clean line art, detailed background, studio quality",
+    "digital": "digital art, concept art, highly detailed, rich vivid colors, polished professional illustration",
+    "3d": "3D render, stylized Pixar-like look, soft global illumination, smooth materials, high detail",
+    "sketch": "detailed pencil sketch, hand-drawn linework, cross-hatching shading, paper texture",
 }
 
-BAD_PROMPT = re.compile(
-    r"\b(nude|nudes|naked|nsfw|porn|porno|pornography|xxx|hentai|topless|erotic|sexual|sex|nangi|nanga|"
-    r"chudai|boobs|nipples|genitals|blowjob|onlyfans|gore|beheading|decapitat\w*|loli|lolita)\b", re.I)
-BAD_MESSAGE = "Is tarah ki image main nahi bana sakta. Kuch aur creative try karo, jaise koi mast scene ya character."
-
-class ImageError(Exception):
-    def __init__(self, user_msg: str, status: int = 502):
-        super().__init__(user_msg)
-        self.user_msg, self.status = user_msg, status
+ENHANCER_SYSTEM = (
+    "You write prompts for an AI image generator (FLUX). The user's request may be in Hindi, Hinglish or English. "
+    "Rewrite it as ONE detailed English image prompt of 40 to 70 words: subject, setting, composition, lighting, colors, mood, camera or medium. "
+    "Keep the user's intent exactly. Do not put any text, captions, logos or watermarks inside the image. "
+    "If the request is sexual, sexualizes or endangers minors, makes a deepfake of a real person, is graphic gore, or promotes hate, "
+    "reply with exactly the single word REFUSE. "
+    "Output only the final prompt. No quotes, no explanation."
+)
 
 class ImageRequest(BaseModel):
     prompt: str
     style: str = "auto"
-    ratio: str = "1:1"
-    quality: str = "fast"
-    enhance: bool = True
-    seed: Optional[int] = None
+    ratio: str = "square"
+    seed: int = 0
     client_id: str = ""
     user_name: str = ""
+    mode: str = "image"
 
-def image_provider() -> str:
-    want = {"hf": "huggingface"}.get(IMAGE_PROVIDER, IMAGE_PROVIDER)
-    if want == "together" and TOGETHER_API_KEY:
-        return "together"
-    if want == "huggingface" and HF_TOKEN:
-        return "huggingface"
-    if TOGETHER_API_KEY:
-        return "together"
-    if HF_TOKEN:
-        return "huggingface"
-    return ""
+class ImageError(Exception):
+    pass
 
-def steps_for(model: str):
-    m = model.lower()
-    if "schnell" in m:
-        return 4
-    if "dev" in m and "klein" not in m:
-        return 28
-    return None  # baaki models (pro, klein...) ke apne default steps sahi hote hain
+_img_last = {}  # client -> last image request time
 
-def sniff_mime(b: bytes) -> str:
-    if b.startswith(b"\x89PNG"):
-        return "image/png"
-    if b.startswith(b"\xff\xd8"):
+def image_providers_ready():
+    return [n for n in IMAGE_PROVIDERS if provider_ready(n)]
+
+def provider_ready(name: str) -> bool:
+    if name == "pollinations_key":
+        return bool(POLLINATIONS_API_KEY)
+    if name == "huggingface":
+        return bool(HF_TOKEN)
+    if name == "cloudflare":
+        return bool(CF_ACCOUNT_ID and CF_API_TOKEN)
+    return name == "pollinations"
+
+def sniff_image(data: bytes):
+    if data[:3] == b"\xff\xd8\xff":
         return "image/jpeg"
-    if b[:4] == b"RIFF" and b[8:12] == b"WEBP":
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
         return "image/webp"
-    return ""
+    return None
 
-def provider_error(r):
-    """Provider ke error ko user-friendly Hinglish message mein badalta hai."""
-    code = r.status_code
-    if code < 400:
-        return
-    body = (r.text or "")[:300]
-    log.warning("image provider %s: %s", code, body)
-    if "nsfw" in body.lower() or "safety" in body.lower() or "moderation" in body.lower():
-        raise ImageError("Ye prompt image server ko safe nahi laga. Kuch aur try karo.", 400)
-    if code in (401, 403):
-        raise ImageError("Image server ki key ya permission galat hai. Owner ko batao.", 502)
-    if code == 402:
-        raise ImageError("Image credits khatam ho gaye hain. Owner ko batao.", 503)
-    if code == 404:
-        raise ImageError("Ye image model available nahi hai. Owner ko IMAGE_MODEL check karna hoga.", 502)
-    if code == 429:
-        raise ImageError("Image server abhi busy hai. Thodi der baad try karo.", 429)
-    if code in (400, 422):
-        raise ImageError("Is prompt ya size ke saath image nahi ban payi. Prompt thoda badal ke try karo.", 400)
-    raise ImageError("Image server ne jawab nahi diya. Dobara try karo.", 502)
+def enhance_prompt(user_prompt: str) -> str:
+    """Hinglish/short idea ko detailed English image prompt banata hai. Fail ho to original prompt chalta hai."""
+    if not GROQ_API_KEY:
+        return user_prompt
+    try:
+        payload = {
+            "messages": [{"role": "system", "content": ENHANCER_SYSTEM}, {"role": "user", "content": user_prompt}],
+            "temperature": 0.7,
+            "max_tokens": 400,
+        }
+        out = call_groq(payload, [DEFAULT_MODEL]).strip().strip('"').strip()
+        if out.upper().startswith("REFUSE"):
+            raise ImageError("refused")
+        return out[:900] if len(out) > 10 else user_prompt
+    except ImageError:
+        raise
+    except Exception:
+        log.warning("prompt enhance failed, original prompt use ho raha hai")
+        return user_prompt
 
-def together_generate(model, prompt, w, h, steps, seed) -> bytes:
-    body = {"model": model, "prompt": prompt, "width": w, "height": h, "n": 1, "seed": seed, "response_format": "b64_json"}
-    if steps:
-        body["steps"] = steps
-    r = http.post(TOGETHER_URL, headers={"Authorization": f"Bearer {TOGETHER_API_KEY}", "Content-Type": "application/json"},
-                  json=body, timeout=(10, 110))
-    provider_error(r)
-    item = (r.json().get("data") or [{}])[0]
-    if item.get("b64_json"):
-        return base64.b64decode(item["b64_json"])
-    if item.get("url"):
-        rr = http.get(item["url"], timeout=40)
-        rr.raise_for_status()
-        return rr.content
-    raise ImageError("Image server ne khaali jawab diya. Dobara try karo.", 502)
+def read_image_response(r) -> tuple:
+    if r.status_code != 200:
+        raise RuntimeError(f"http {r.status_code}")
+    data = r.content
+    mime = sniff_image(data)
+    if not mime or len(data) < 2000:
+        raise RuntimeError("response image nahi hai")
+    return data, mime
 
-def hf_generate(model, prompt, w, h, steps, seed) -> bytes:
-    params = {"width": w, "height": h, "seed": seed}
-    if steps:
-        params["num_inference_steps"] = steps
-    body = {"inputs": prompt, "parameters": params}
-    headers = {"Authorization": f"Bearer {HF_TOKEN}", "Content-Type": "application/json", "Accept": "image/png"}
-    for attempt in (0, 1):
-        r = http.post(HF_URL + model, headers=headers, json=body, timeout=(10, 110))
-        if r.status_code == 503 and attempt == 0:      # model warm ho raha hai
-            try:
-                wait = float(r.json().get("estimated_time", 12))
-            except Exception:
-                wait = 12
-            time.sleep(min(max(wait, 3), 25))
+def gen_pollinations(prompt, w, h, seed, keyed):
+    q = {"model": POLLINATIONS_MODEL, "width": w, "height": h, "seed": seed, "nologo": "true", "enhance": "false", "safe": "true"}
+    if keyed:
+        url = "https://gen.pollinations.ai/image/" + quote(prompt, safe="")
+        q["key"] = POLLINATIONS_API_KEY
+    else:
+        url = "https://image.pollinations.ai/prompt/" + quote(prompt, safe="")
+    return read_image_response(http.get(url, params=q, timeout=(10, 100)))
+
+def gen_huggingface(prompt, w, h, seed):
+    r = http.post(HF_IMAGE_URL,
+                  headers={"Authorization": f"Bearer {HF_TOKEN}", "Accept": "image/jpeg"},
+                  json={"inputs": prompt, "parameters": {"width": w, "height": h, "seed": seed}},
+                  timeout=(10, 100))
+    return read_image_response(r)
+
+def gen_cloudflare(prompt, w, h, seed):
+    url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/ai/run/{CF_IMAGE_MODEL}"
+    r = http.post(url, headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
+                  json={"prompt": prompt, "steps": 8}, timeout=(10, 100))
+    if r.status_code != 200:
+        raise RuntimeError(f"http {r.status_code}")
+    b64 = (r.json().get("result") or {}).get("image")
+    if not b64:
+        raise RuntimeError("image missing")
+    data = base64.b64decode(b64)
+    mime = sniff_image(data)
+    if not mime:
+        raise RuntimeError("response image nahi hai")
+    return data, mime
+
+def run_providers(prompt, w, h, seed):
+    for name in IMAGE_PROVIDERS:
+        if not provider_ready(name):
             continue
-        provider_error(r)
-        return r.content
-    raise ImageError("Image model abhi warm ho raha hai. 30 second baad try karo.", 503)
-
-def generate_image_bytes(model, prompt, w, h, seed) -> bytes:
-    steps = steps_for(model)
-    fn = together_generate if image_provider() == "together" else hf_generate
-    data = fn(model, prompt, w, h, steps, seed)
-    if not sniff_mime(data):
-        log.warning("image provider returned non-image bytes (%d)", len(data or b""))
-        raise ImageError("Image server se sahi image nahi mili. Dobara try karo.", 502)
-    return data
-
-ENHANCER_SYSTEM = (
-    "You are the prompt writer and safety filter for an AI image generator (FLUX). "
-    "The user's request may be in Hindi, Hinglish (Roman script) or English. "
-    "Reply with ONLY one JSON object, no markdown: {\"ok\": true or false, \"reason\": \"...\", \"prompt\": \"...\"}.\n"
-    "Set ok=false (and put a short, kind Hinglish sentence in reason) if the request asks for: sexual or nude content, "
-    "graphic gore, any sexualised minor, hate symbols or hateful content, self-harm, or realistic fake images of real named people "
-    "doing harmful, shameful or deceptive things. Everything else is allowed, including cartoons, fantasy, products, places, animals, "
-    "posters and logos.\n"
-    "If ok=true, prompt must be ONE English paragraph under 90 words. Keep the user's subject and every detail they asked for. "
-    "Drop command words like 'image bana do' or 'draw'. If the user wants words inside the image, keep that exact text in quotes; "
-    "otherwise never add text, captions, signatures or logos to the scene. "
-)
-ENHANCE_ON = ("Expand it into a rich, vivid description: subject, setting, composition, lighting, mood, camera or lens, "
-              "colour palette and textures, so the result looks stunning.")
-ENHANCE_OFF = "Translate it faithfully into clear English and add almost nothing."
-
-def craft_prompt(raw: str, enhance: bool):
-    """(ok, prompt_ya_reason). Groq se prompt chamkata hai aur safety check bhi karta hai."""
-    if BAD_PROMPT.search(raw):
-        return False, BAD_MESSAGE
-    prompt = raw
-    if GROQ_API_KEY:
         try:
-            payload = {"messages": [{"role": "system", "content": ENHANCER_SYSTEM + (ENHANCE_ON if enhance else ENHANCE_OFF)},
-                                    {"role": "user", "content": raw}],
-                       "temperature": 0.7, "max_tokens": 900}
-            text = call_groq(payload, [DEFAULT_MODEL], [{"reasoning_effort": "low"}, {}])
-            m = re.search(r"\{.*\}", text, re.S)
-            obj = json.loads(m.group(0)) if m else {}
-            if obj.get("ok") is False:
-                return False, (str(obj.get("reason") or "").strip()[:200] or BAD_MESSAGE)
-            p = str(obj.get("prompt") or "").strip()
-            if p:
-                prompt = p
-        except Exception:
-            log.warning("prompt enhancer failed, raw prompt use kar rahe hain", exc_info=True)
-    prompt = re.sub(r"\s+", " ", prompt).strip()[:900]
-    if BAD_PROMPT.search(prompt):
-        return False, BAD_MESSAGE
-    return True, prompt
-
-def image_gate(req, request: Request):
-    """(error_response, client_id, used_today). Limits + block + maintenance check."""
-    if get_setting("paused") == "1":
-        return fail(get_setting("pause_message") or "JARVIS abhi maintenance mein hai. Thodi der baad aana.", 503), "", 0
-    if get_setting("images_off") == "1":
-        return fail("Image banana abhi band hai. Thodi der baad try karo.", 503), "", 0
-    cid = clean_cid(req.client_id)
-    if not cid:
-        return fail("Device ID nahi mili. Page refresh karke dobara try karo.", 400), "", 0
-    today = (datetime.utcnow() + IST).strftime("%Y-%m-%d")
-    day_expr = "date(ts + 19800, 'unixepoch')"
-    with db() as c:
-        row = c.execute("SELECT blocked FROM users WHERE client_id=?", (cid,)).fetchone()
-        if row and row[0]:
-            return fail("Is device ka access band kar diya gaya hai.", 403), cid, 0
-        used = c.execute(f"SELECT COUNT(*) FROM events WHERE client_id=? AND mode='image' AND {day_expr}=?", (cid, today)).fetchone()[0]
-        total = c.execute(f"SELECT COUNT(*) FROM events WHERE mode='image' AND {day_expr}=?", (today,)).fetchone()[0]
-    if used >= IMAGE_DAILY_LIMIT:
-        return fail(f"Aaj ki {IMAGE_DAILY_LIMIT} images ki limit poori ho gayi. Kal phir banana!", 429), cid, used
-    if total >= IMAGE_GLOBAL_DAILY:
-        return fail("Aaj ke liye JARVIS ki image limit poori ho gayi. Kal try karo.", 429), cid, used
-    return None, cid, used
-
-def record_image(cid: str, name: str, request: Request):
-    """Sirf kaamyaab image par ginti badhti hai (fail hone par user ki limit nahi katti)."""
-    now = int(time.time())
-    name = (name or "").strip()[:24]
-    device = device_from_ua(request.headers.get("user-agent", ""))
-    with db() as c:
-        if c.execute("SELECT 1 FROM users WHERE client_id=?", (cid,)).fetchone() is None:
-            c.execute("INSERT INTO users (client_id, name, first_seen, last_seen, messages, blocked, device) VALUES (?,?,?,?,1,0,?)",
-                      (cid, name, now, now, device))
-        else:
-            c.execute("UPDATE users SET last_seen=?, messages=messages+1, device=?, name=CASE WHEN ?<>'' THEN ? ELSE name END WHERE client_id=?",
-                      (now, device, name, name, cid))
-        c.execute("INSERT INTO events (ts, client_id, mode) VALUES (?,?,?)", (now, cid, "image"))
+            if name == "pollinations_key":
+                data, mime = gen_pollinations(prompt, w, h, seed, True)
+            elif name == "huggingface":
+                data, mime = gen_huggingface(prompt, w, h, seed)
+            elif name == "cloudflare":
+                data, mime = gen_cloudflare(prompt, w, h, seed)
+            else:
+                data, mime = gen_pollinations(prompt, w, h, seed, False)
+            return data, mime, name
+        except Exception as e:
+            # URL/key kabhi log mein nahi jaati, sirf error ka type aur message
+            log.warning("image provider %s failed: %s %s", name, type(e).__name__, str(e)[:120])
+    raise ImageError("all providers failed")
 
 @app.post("/image")
 def make_image(req: ImageRequest, request: Request):
-    if not image_provider():
-        return fail("Image feature ka setup adhura hai. Owner ko Render mein TOGETHER_API_KEY (ya HF_TOKEN) daalni hogi.", 503)
+    prompt = re.sub(r"\s+", " ", (req.prompt or "")).strip()[:500]
+    if len(prompt) < 2:
+        return fail("Batao kya image banani hai.", 400)
+    ip = request.client.host if request.client else "?"
+    cid = clean_cid(req.client_id) or ip
+    now = time.time()
+    if now - _img_last.get(cid, 0) < IMAGE_GAP_SECONDS:
+        return fail("Thoda ruko, pichhli image abhi ban rahi hai.", 429)
     try:
-        blocked, cid, used = image_gate(req, request)
+        with db() as c:
+            used = c.execute("SELECT COUNT(*) FROM events WHERE client_id=? AND mode='image' AND ts>=?", (cid, int(now) - 86400)).fetchone()[0]
+        if used >= IMAGE_DAILY_LIMIT:
+            return fail(f"Aaj ki {IMAGE_DAILY_LIMIT} images ki limit poori ho gayi. Kal phir try karo.", 429)
     except Exception:
-        log.exception("image gate failed")
-        return fail("Kuch gadbad ho gayi. Dobara try karo.", 500)
+        log.exception("image limit check failed")
+    req.mode = "image"
+    blocked = gate(req, request)
     if blocked:
         return blocked
-    raw = (req.prompt or "").strip()[:600]
-    if len(raw) < 2:
-        return fail("Batao kaisi image banani hai.", 400)
-    style = req.style if req.style in IMAGE_STYLES else "auto"
-    w, h = IMAGE_RATIOS.get(req.ratio, IMAGE_RATIOS["1:1"])
-    quality = "hd" if req.quality == "hd" else "fast"
-    seed = req.seed if isinstance(req.seed, int) and 0 < req.seed < 2**31 else random.randint(1, 2**31 - 1)
+    _img_last[cid] = now
+    if len(_img_last) > 5000:
+        for k in [k for k, t in _img_last.items() if now - t > 300]:
+            _img_last.pop(k, None)
 
-    if not _img_sem.acquire(timeout=45):
-        return fail("Abhi bahut log image bana rahe hain. Ek minute baad try karo.", 429)
     try:
-        ok, text = craft_prompt(raw, bool(req.enhance))
-        if not ok:
-            return fail(text, 400)
-        final = text + (", " + IMAGE_STYLES[style] if IMAGE_STYLES[style] else "")
-        model, fell_back = (IMAGE_MODEL_HD if quality == "hd" else IMAGE_MODEL_FAST), False
-        try:
-            data = generate_image_bytes(model, final, w, h, seed)
-        except ImageError as e:
-            if quality == "hd" and IMAGE_MODEL_FAST != model and e.status in (429, 502, 503):
-                log.warning("HD fail (%s), fast model try kar rahe hain", e.user_msg)
-                model, fell_back = IMAGE_MODEL_FAST, True
-                data = generate_image_bytes(model, final, w, h, seed)
-            else:
-                raise
-        try:
-            record_image(cid, req.user_name, request)
-        except Exception:
-            log.exception("image tracking failed")
-        mime = sniff_mime(data)
-        return JSONResponse(
-            content={"image": f"data:{mime};base64," + base64.b64encode(data).decode("ascii"),
-                     "prompt": text, "seed": seed, "model": model.split("/")[-1], "hd_fallback": fell_back,
-                     "remaining": max(0, IMAGE_DAILY_LIMIT - used - 1), "limit": IMAGE_DAILY_LIMIT},
-            headers={"Cache-Control": "no-store"})
-    except ImageError as e:
-        return fail(e.user_msg, e.status)
-    except requests.exceptions.Timeout:
-        return fail("Image banne mein bahut time lag gaya. Dobara try karo.", 504)
+        final = enhance_prompt(prompt)
+    except ImageError:
+        return fail("Ye wali image main nahi bana sakta. Kuch aur idea bolo!", 400)
+    style = IMAGE_STYLES.get(req.style, "")
+    if style:
+        final = f"{final}, {style}"
+    w, h = IMAGE_SIZES.get(req.ratio, IMAGE_SIZES["square"])
+    seed = req.seed if req.seed > 0 else random.randint(1, 999_999)
+
+    if not IMAGE_SLOTS.acquire(timeout=25):
+        return fail("Abhi bahut log image bana rahe hain. Thodi der baad try karo.", 503)
+    try:
+        data, mime, provider = run_providers(final, w, h, seed)
+    except ImageError:
+        return fail("Image abhi nahi ban payi. Thodi der baad dobara try karo.", 502)
     except Exception:
         log.exception("image failed")
-        return fail("Kuch gadbad ho gayi. Dobara try karo.", 500)
+        return fail("Kuch gadbad ho gayi. Dobara try karo.", 502)
     finally:
-        _img_sem.release()
+        IMAGE_SLOTS.release()
+    log.info("image ok via %s (%d KB)", provider, len(data) // 1024)
+    return {"image": f"data:{mime};base64," + base64.b64encode(data).decode("ascii"),
+            "prompt": final, "seed": seed, "width": w, "height": h}
 
 class BlockRequest(BaseModel):
     client_id: str
@@ -763,7 +693,6 @@ class BlockRequest(BaseModel):
 class SettingsRequest(BaseModel):
     paused: bool = False
     pause_message: str = ""
-    images_enabled: Optional[bool] = None   # None = ise mat chhedo
 
 @app.get("/admin/stats")
 def admin_stats(request: Request, days: int = 14, x_admin_key: str = Header(default="")):
@@ -781,8 +710,6 @@ def admin_stats(request: Request, days: int = 14, x_admin_key: str = Header(defa
         active_today = c.execute(f"SELECT COUNT(DISTINCT client_id) FROM events WHERE {day_expr}=?", (today,)).fetchone()[0]
         msgs_today = c.execute(f"SELECT COUNT(*) FROM events WHERE {day_expr}=?", (today,)).fetchone()[0]
         active_7d = c.execute("SELECT COUNT(DISTINCT client_id) FROM events WHERE ts >= ?", (now - 7 * 86400,)).fetchone()[0]
-        images_total = c.execute("SELECT COUNT(*) FROM events WHERE mode='image'").fetchone()[0]
-        images_today = c.execute(f"SELECT COUNT(*) FROM events WHERE mode='image' AND {day_expr}=?", (today,)).fetchone()[0]
         modes = {m: n for m, n in c.execute("SELECT mode, COUNT(*) FROM events GROUP BY mode")}
         msgs_by_day = {d: (m, u) for d, m, u in c.execute(
             f"SELECT {day_expr}, COUNT(*), COUNT(DISTINCT client_id) FROM events WHERE ts >= ? GROUP BY 1", (now - (days + 1) * 86400,))}
@@ -795,11 +722,9 @@ def admin_stats(request: Request, days: int = 14, x_admin_key: str = Header(defa
         series.append({"date": d, "messages": m, "users": u})
     return {
         "totals": {"users": total_users, "messages": total_msgs, "online_now": online, "blocked": blocked_n,
-                   "new_today": new_today, "active_today": active_today, "messages_today": msgs_today, "active_7d": active_7d,
-                   "images_today": images_today, "images_total": images_total},
+                   "new_today": new_today, "active_today": active_today, "messages_today": msgs_today, "active_7d": active_7d},
         "modes": modes, "series": series, "users": users,
-        "settings": {"paused": get_setting("paused") == "1", "pause_message": get_setting("pause_message"),
-                     "images_enabled": get_setting("images_off") != "1", "image_provider": image_provider() or "none"},
+        "settings": {"paused": get_setting("paused") == "1", "pause_message": get_setting("pause_message")},
         "server_time": now,
     }
 
@@ -818,8 +743,6 @@ def admin_settings(body: SettingsRequest, request: Request, x_admin_key: str = H
     require_admin(request, x_admin_key)
     set_setting("paused", "1" if body.paused else "0")
     set_setting("pause_message", body.pause_message.strip()[:200])
-    if body.images_enabled is not None:
-        set_setting("images_off", "0" if body.images_enabled else "1")
     return {"ok": True}
 
 if __name__ == "__main__":

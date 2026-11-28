@@ -325,6 +325,39 @@
   .attach-strip .thumb img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); }
   .attach-strip .thumb button { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); font-size: 15px; line-height: 1; }
 
+
+  /* ---------- image generation ---------- */
+  .tool.on { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+  .field.imaging { border-color: color-mix(in srgb, var(--accent) 65%, transparent); box-shadow: 0 0 0 3px var(--focus), 0 0 30px var(--glow-soft); }
+  .imgbar { display: flex; flex-direction: column; gap: 8px; padding: 0 4px 10px 0; }
+  .imgbar-head { display: flex; align-items: center; justify-content: space-between; font-size: .78rem; font-weight: 700; color: var(--accent); }
+  .imgbar-title { display: inline-flex; align-items: center; gap: 6px; }
+  .imgbar-title .ic { width: 16px; height: 16px; }
+  .imgbar-x { width: 28px; height: 28px; border-radius: 8px; color: var(--muted); font-size: 20px; line-height: 1; }
+  .imgbar-x:hover { background: var(--surface-2); color: var(--text); }
+  .chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 1px; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: none; display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font-size: .82rem; font-weight: 600; transition: border-color .15s, color .15s; }
+  .chip:hover { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); color: var(--text); }
+  .chip[aria-pressed="true"] { background: linear-gradient(120deg, var(--accent), var(--accent-2)); color: var(--on-accent); border-color: transparent; }
+  .chip i { display: inline-block; border: 1.6px solid currentColor; border-radius: 2px; }
+  .chip i.sq { width: 11px; height: 11px; } .chip i.pt { width: 9px; height: 14px; } .chip i.ls { width: 15px; height: 9px; }
+
+  .imgcard { width: min(100%, 460px); }
+  .imgframe { position: relative; width: 100%; aspect-ratio: var(--ar, 1 / 1); max-height: 70dvh; border-radius: 16px; overflow: hidden; background: var(--surface-2); border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line)); box-shadow: 0 10px 34px rgba(0, 0, 0, .28), 0 0 30px var(--glow-soft); }
+  .imgframe img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; animation: imgIn .45s ease-out both; }
+  @keyframes imgIn { from { opacity: 0; transform: scale(1.03); } }
+  .imgframe.loading::before { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, color-mix(in srgb, var(--accent) 22%, transparent) 50%, transparent 70%); transform: translateX(-100%); animation: shimmer 1.7s ease-in-out infinite; }
+  @keyframes shimmer { to { transform: translateX(100%); } }
+  .imgwait { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 16px; text-align: center; color: var(--accent); }
+  .imgwait .ic { width: 38px; height: 38px; animation: pulse 1.4s ease-in-out infinite; }
+  .imgstatus { font-size: .84rem; color: var(--muted); min-height: 1.3em; }
+  .imgcap { margin-top: 8px; font-size: .84rem; line-height: 1.45; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .imggone { position: absolute; inset: 0; display: grid; place-items: center; padding: 18px; text-align: center; color: var(--muted); font-size: .86rem; line-height: 1.5; }
+  dialog.lightbox { width: min(96vw, 920px); max-height: 96dvh; padding: 10px; }
+  .lightbox img { display: block; width: 100%; max-height: calc(96dvh - 100px); object-fit: contain; border-radius: 12px; background: var(--bg); }
+  .lightbox-bar { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+
   /* ---------- dialogs, toast ---------- */
   dialog { margin: auto; width: min(92vw, 400px); max-height: min(88dvh, 680px); overflow-y: auto; padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--text); box-shadow: var(--shadow), 0 0 44px var(--glow-soft); }
   dialog::backdrop { background: rgba(2, 6, 14, .6); }
@@ -415,59 +448,6 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   }
-
-  /* ---------- Image Studio ---------- */
-  .tool.img-tool:hover { color: var(--accent); }
-  .tool.img-tool[aria-pressed="true"] { color: var(--on-accent); background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: 0 0 16px var(--glow); }
-  .studio { display: grid; gap: 10px; padding: 12px; margin-bottom: 8px; border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line)); border-radius: 18px; background: color-mix(in srgb, var(--surface) 95%, transparent); box-shadow: 0 10px 34px rgba(0,0,0,.22), 0 0 30px var(--glow-soft); animation: fadeIn .18s ease-out both; }
-  html[data-theme="light"] .studio { box-shadow: 0 10px 28px rgba(15, 35, 70, .09), 0 0 24px var(--glow-soft); }
-  .studio-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .92rem; }
-  .studio-head > .ic { color: var(--accent); width: 18px; height: 18px; }
-  .studio-head .stgrow { flex: 1; }
-  .studio-head small { color: var(--muted); font-weight: 500; font-size: .74rem; }
-  .studio-x { width: 32px; height: 32px; }
-  .chips { display: flex; gap: 6px; overflow-x: auto; padding: 1px 0 2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-  .chips::-webkit-scrollbar { display: none; }
-  .studio-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
-  .studio-row .chips { flex: 1; min-width: 0; }
-  .chip { flex: none; display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); font-size: .82rem; font-weight: 600; white-space: nowrap; transition: color .15s, border-color .15s; }
-  .chip:hover { color: var(--text); border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
-  .chip[aria-pressed="true"] { color: var(--on-accent); border-color: transparent; background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
-  .chip.idea { font-weight: 500; color: var(--text); background: color-mix(in srgb, var(--accent) 8%, var(--surface-2)); }
-  .rx { display: inline-block; margin-right: 7px; border: 1.6px solid currentColor; border-radius: 2px; }
-  .r1x1 { width: 12px; height: 12px; } .r3x4 { width: 10px; height: 13px; } .r16x9 { width: 16px; height: 9px; } .r9x16 { width: 9px; height: 16px; }
-  @media (max-height: 640px) { #st-ideas { display: none; } }
-
-  .imgcard { width: min(100%, 420px); }
-  .imgcard[data-r="3:4"] { width: min(100%, 330px); }
-  .imgcard[data-r="9:16"] { width: min(100%, 250px); }
-  .imgcard[data-r="16:9"] { width: min(100%, 520px); }
-  .imgcard .frame { position: relative; overflow: hidden; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); background: var(--surface-2); box-shadow: 0 10px 34px rgba(0,0,0,.25), 0 0 30px var(--glow-soft); }
-  html[data-theme="light"] .imgcard .frame { box-shadow: 0 10px 28px rgba(15, 35, 70, .14); }
-  .imgcard img.pic { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; opacity: 0; transition: opacity .4s ease; }
-  .imgcard img.pic.on { opacity: 1; }
-  .imgcard .fab { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; opacity: .92; }
-  .imgcard .fab button { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; color: #fff; background: rgba(6, 12, 24, .62); border: 1px solid rgba(255,255,255,.18); }
-  .imgcard .fab button:hover { background: rgba(6, 12, 24, .82); }
-  .imgcard .cap { margin-top: 9px; font-size: .86rem; line-height: 1.5; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; overflow-wrap: anywhere; }
-  .imgcard .cap.open { -webkit-line-clamp: unset; display: block; }
-  .imgcard .meta { margin-top: 4px; font-size: .74rem; font-weight: 600; letter-spacing: .02em; color: color-mix(in srgb, var(--accent) 80%, var(--muted)); }
-  .imgcard .msg-actions { flex-wrap: wrap; }
-  .imgcard .chip-btn span { padding-right: 2px; }
-
-  .imgload .frame { display: grid; place-items: center; }
-  .shimmer { position: absolute; inset: 0; background: linear-gradient(110deg, transparent 28%, color-mix(in srgb, var(--accent) 24%, transparent) 50%, transparent 72%); transform: translateX(-100%); animation: sweep 1.7s ease-in-out infinite; }
-  @keyframes sweep { to { transform: translateX(100%); } }
-  .imgload .orb-ic { position: relative; display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: 0 0 30px var(--glow); animation: breathe 1.8s ease-in-out infinite; }
-  .imgload .orb-ic .ic { width: 26px; height: 26px; }
-  @keyframes breathe { 50% { transform: scale(1.12); opacity: .75; } }
-  .imgload .status { position: absolute; left: 12px; right: 12px; bottom: 12px; text-align: center; font-size: .84rem; font-weight: 600; color: var(--text); text-shadow: 0 1px 8px var(--bg); }
-
-  dialog.viewer { width: min(96vw, 920px); max-height: 94dvh; padding: 10px; display: none; }
-  dialog.viewer[open] { display: block; }
-  .viewer img { display: block; width: 100%; max-height: 78dvh; object-fit: contain; border-radius: 12px; background: var(--surface-2); }
-  .viewer .viewer-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
-  .viewer .viewer-bar p { flex: 1; min-width: 0; font-size: .8rem; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 </style>
 </head>
 <body>
@@ -496,6 +476,8 @@
   <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0012 3z"/></symbol>
   <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></symbol>
   <symbol id="i-wave" viewBox="0 0 24 24"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/></symbol>
+  <symbol id="i-imagine" viewBox="0 0 24 24"><path d="M4 20L13 11M14 4l1.3 3L18.3 8.3 15.3 9.6 14 12.6 12.7 9.6 9.7 8.3 12.7 7 14 4zM19 14l.8 1.8 1.8.8-1.8.8L19 19.2l-.8-1.8-1.8-.8 1.8-.8L19 14z"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
   <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5L8 19"/></symbol>
   <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></symbol>
   <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zM17 8.5a5 5 0 010 7"/></symbol>
@@ -503,9 +485,6 @@
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></symbol>
   <symbol id="i-thumbup" viewBox="0 0 24 24"><path d="M7 10v12"/><path d="M15 5.9L14 10h5.8a2 2 0 011.9 2.6l-2.3 8a2 2 0 01-1.9 1.4H4a2 2 0 01-2-2v-8a2 2 0 012-2h2.8a2 2 0 001.8-1.1L12 2a3.1 3.1 0 013 3.9z"/></symbol>
   <symbol id="i-thumbdown" viewBox="0 0 24 24"><path d="M17 14V2"/><path d="M9 18.1L10 14H4.2a2 2 0 01-1.9-2.6l2.3-8A2 2 0 016.5 2H20a2 2 0 012 2v8a2 2 0 01-2 2h-2.8a2 2 0 00-1.8 1.1L12 22a3.1 3.1 0 01-3-3.9z"/></symbol>
-  <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18c1.5 0 2.2-1 2.2-2.1 0-1.6-1.1-1.8-1.1-3.1 0-1 .8-1.8 1.9-1.8H18a3 3 0 003-3C21 6.5 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7.2" r="1"/><circle cx="14.5" cy="7.2" r="1"/></symbol>
-  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
-  <symbol id="i-share" viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v13"/></symbol>
 </svg>
 
 <div class="app" id="app">
@@ -552,24 +531,31 @@
     <div class="composer">
       <button class="jump" id="jump-btn" type="button" aria-label="Scroll to latest message" hidden><svg class="ic"><use href="#i-down"/></svg></button>
       <div class="composer-inner">
-        <div class="studio" id="studio" hidden>
-          <div class="studio-head">
-            <svg class="ic" aria-hidden="true"><use href="#i-palette"/></svg><span>Image Studio</span><small id="studio-left"></small><span class="stgrow"></span>
-            <button class="icon-btn studio-x" id="studio-x" type="button" aria-label="Close image studio"><svg class="ic"><use href="#i-x"/></svg></button>
-          </div>
-          <div class="chips" id="st-styles" role="group" aria-label="Style"></div>
-          <div class="studio-row"><div class="chips" id="st-ratios" role="group" aria-label="Size"></div></div>
-          <div class="studio-row"><div class="chips" id="st-quality" role="group" aria-label="Quality"></div></div>
-          <div class="chips" id="st-ideas" role="group" aria-label="Ideas"></div>
-        </div>
         <div class="field">
+          <div class="imgbar" id="imgbar" hidden>
+            <div class="imgbar-head"><span class="imgbar-title"><svg class="ic"><use href="#i-imagine"/></svg>Image mode</span><button class="imgbar-x" id="imgbar-x" type="button" aria-label="Image mode band karo">&times;</button></div>
+            <div class="chips" data-key="imgRatio" role="group" aria-label="Image size">
+              <button class="chip" type="button" data-val="square" aria-pressed="true"><i class="sq"></i>Square</button>
+              <button class="chip" type="button" data-val="portrait" aria-pressed="false"><i class="pt"></i>Portrait</button>
+              <button class="chip" type="button" data-val="landscape" aria-pressed="false"><i class="ls"></i>Landscape</button>
+            </div>
+            <div class="chips" data-key="imgStyle" role="group" aria-label="Image style">
+              <button class="chip" type="button" data-val="auto" aria-pressed="true">Auto</button>
+              <button class="chip" type="button" data-val="realistic" aria-pressed="false">Realistic</button>
+              <button class="chip" type="button" data-val="cinematic" aria-pressed="false">Cinematic</button>
+              <button class="chip" type="button" data-val="anime" aria-pressed="false">Anime</button>
+              <button class="chip" type="button" data-val="digital" aria-pressed="false">Digital art</button>
+              <button class="chip" type="button" data-val="3d" aria-pressed="false">3D</button>
+              <button class="chip" type="button" data-val="sketch" aria-pressed="false">Sketch</button>
+            </div>
+          </div>
           <div class="attach-strip" id="attach-strip" hidden></div>
           <label class="sr-only" for="user-input">Message JARVIS</label>
           <textarea id="user-input" rows="1" placeholder="Message JARVIS…" enterkeyhint="send" autocomplete="off"></textarea>
           <input type="file" id="file-input" accept="image/*" multiple hidden>
           <div class="field-bar">
             <button class="tool attach" id="attach-btn" type="button" aria-label="Photo bhejein" title="Photo bhejein"><svg class="ic"><use href="#i-image"/></svg></button>
-            <button class="tool img-tool" id="img-btn" type="button" aria-label="Image banao" aria-pressed="false" title="Image Studio"><svg class="ic"><use href="#i-palette"/></svg></button>
+            <button class="tool" id="img-btn" type="button" aria-label="Image banao" aria-pressed="false" title="Image banao"><svg class="ic"><use href="#i-imagine"/></svg></button>
             <span class="grow"></span>
             <button class="tool" id="voice-btn" type="button" aria-label="Voice mode" title="Voice mode"><svg class="ic"><use href="#i-wave"/></svg></button>
             <button class="tool" id="mic-btn" type="button" aria-label="Speak your message" title="Bol kar likhein"><svg class="ic"><use href="#i-mic"/></svg></button>
@@ -592,6 +578,10 @@
     </div>
   </form>
 </dialog>
+<dialog id="lightbox" class="lightbox" aria-label="Image preview">
+  <img id="lb-img" alt="">
+  <div class="lightbox-bar"><button class="btn" type="button" id="lb-dl">Download</button><button class="btn ok" type="button" id="lb-close">Close</button></div>
+</dialog>
 <dialog id="settings" aria-labelledby="set-title">
   <form method="dialog">
     <h3 id="set-title">Settings</h3>
@@ -610,10 +600,6 @@
   <p>JARVIS aapko naam se bulayega.</p>
   <input class="txt" id="nm-input" maxlength="24" placeholder="Jaise: Shiv" autocomplete="given-name">
   <div class="dialog-actions" style="margin-top:16px"><button class="btn" type="button" id="nm-skip">Skip</button><button class="btn ok" type="button" id="nm-save">Save</button></div>
-</dialog>
-<dialog id="img-viewer" class="viewer" aria-label="Image preview">
-  <img id="viewer-img" alt="">
-  <div class="viewer-bar"><p id="viewer-cap"></p><button class="btn" type="button" id="viewer-dl">Download</button><button class="btn" type="button" id="viewer-close">Close</button></div>
 </dialog>
 <div class="voice" id="voice" hidden role="dialog" aria-modal="true" aria-label="Voice mode" data-state="idle">
   <button class="icon-btn voice-x" id="voice-close" type="button" aria-label="Close voice mode"><svg class="ic"><use href="#i-x"/></svg></button>
@@ -668,16 +654,21 @@ const ALL_PROMPTS = [
   "How to improve focus and concentration?",
   "Mujhe ek naya English word sikhao",
   "Batao space mein kya hota hai?",
-  "Mere liye ek acchi si shayari likho",
-  "Neon lights wale cyberpunk shehar ki mast image banao",
-  "Ek cute robot ki 3D image bana do jo chai pi raha hai",
-  "Himalaya ke upar sunrise ki cinematic image banao"
+  "Mere liye ek acchi si shayari likho"
 ];
 
 // Har baar 4 random naye suggestions uthayega
+const IMAGE_PROMPTS = [
+  "Ek cyberpunk city ki image banao jaha raat ko baarish ho rahi hai",
+  "Ek cute robot ki image banao jo chai pee raha hai",
+  "Pahadon par sunset ke time ek akele ghar ki image banao",
+  "Ek anime style warrior girl ki image banao"
+];
 function getRandomPrompts(count = 4) {
   const shuffled = [...ALL_PROMPTS].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, count);
+  const out = shuffled.slice(0, count - 1);
+  out.splice(Math.floor(Math.random() * count), 0, IMAGE_PROMPTS[Math.floor(Math.random() * IMAGE_PROMPTS.length)]);
+  return out;
 }
 
   const $ = (id) => document.getElementById(id);
@@ -698,9 +689,8 @@ function getRandomPrompts(count = 4) {
   let pendingChatId = null;
   let activeController = null, stoppedByUser = false;
   let listening = false, speaking = false, voiceOn = false, vBusy = false, sayId = 0;
-  let studioOn = false, imgBusy = false;   // Image Studio on hai ya nahi, aur image ban rahi hai ya nahi
   const SET_KEY = 'jarvis_settings';
-  const S = Object.assign({ lang: 'hi-IN', autoread: 'off', size: '16px', mode: 'normal', accent: 'cyan', name: '', nameAsked: false, imgStyle: 'auto', imgRatio: '1:1', imgQuality: 'fast', imgEnhance: true }, (() => { try { return JSON.parse(localStorage.getItem(SET_KEY)) || {}; } catch (e) { return {}; } })());
+  const S = Object.assign({ lang: 'hi-IN', autoread: 'off', size: '16px', mode: 'normal', accent: 'cyan', name: '', nameAsked: false, imgStyle: 'auto', imgRatio: 'square' }, (() => { try { return JSON.parse(localStorage.getItem(SET_KEY)) || {}; } catch (e) { return {}; } })());
 
   function loadChats() {
     try {
@@ -714,7 +704,8 @@ function getRandomPrompts(count = 4) {
     clearTimeout(saveTimer);
     try { localStorage.setItem(STORE_KEY, JSON.stringify(allChats)); }
     catch (e) {
-      if (shedImageThumbs()) { try { localStorage.setItem(STORE_KEY, JSON.stringify(allChats)); } catch (e2) { } }
+      // storage full: purani generated images hata kar chats bacha lo
+      try { dropOldImages(4); localStorage.setItem(STORE_KEY, JSON.stringify(allChats)); } catch (e2) { }
     }
   }
   function saveSoon() {
@@ -893,7 +884,6 @@ function getRandomPrompts(count = 4) {
       eb.setAttribute('aria-label', 'Edit message'); eb.innerHTML = icon('edit');
       el.append(eb, b);
     } else {
-      if (msg.kind === 'image') { fillImageMessage(el, msg); return el; }
       el.appendChild(makeAvatar('sm'));
       const col = document.createElement('div'); col.className = 'msg-col';
       const body = document.createElement('div'); body.className = 'prose';
@@ -906,10 +896,18 @@ function getRandomPrompts(count = 4) {
         `<span class="action-divider" aria-hidden="true"></span>` +
         `<button class="chip-btn feedback-btn ${msg.feedback === 'up' ? 'is-active' : ''}" type="button" data-feedback="up" aria-label="Helpful" aria-pressed="${msg.feedback === 'up'}" title="Helpful">${icon('thumbup')}</button>` +
         `<button class="chip-btn feedback-btn ${msg.feedback === 'down' ? 'is-active' : ''}" type="button" data-feedback="down" aria-label="Not helpful" aria-pressed="${msg.feedback === 'down'}" title="Not helpful">${icon('thumbdown')}</button>`;
+      if (msg.imgPrompt) {
+        body.replaceChildren(buildImageCard(msg));
+        const sp = actions.querySelector('[data-speak]'); if (sp) sp.remove();
+        const dl = document.createElement('button'); dl.type = 'button'; dl.className = 'chip-btn'; dl.dataset.dl = '1'; dl.title = 'Download'; dl.setAttribute('aria-label', 'Download image'); dl.innerHTML = icon('download');
+        const zm = document.createElement('button'); zm.type = 'button'; zm.className = 'chip-btn'; zm.dataset.zoom = '1'; zm.title = 'Bada dekho'; zm.setAttribute('aria-label', 'View larger'); zm.innerHTML = icon('expand');
+        actions.prepend(dl, zm);
+      }
       col.append(body, actions);
       el.appendChild(col);
       el._raw = msg.content;
       el._message = msg;
+      if (msg.imgPrompt) el._raw = msg.imgPrompt;
     }
     return el;
   }
@@ -929,7 +927,7 @@ function getRandomPrompts(count = 4) {
     getRandomPrompts(4).forEach((t, i) => {
       const btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'prompt'; btn.dataset.prompt = t;
-      btn.innerHTML = '<span class="p-ic">' + icon(['spark', 'code', 'bulb', 'globe'][i % 4]) + '</span><span class="p-tx"></span>';
+      btn.innerHTML = '<span class="p-ic">' + icon(IMAGE_PROMPTS.includes(t) ? 'imagine' : ['spark', 'code', 'bulb', 'globe'][i % 4]) + '</span><span class="p-tx"></span>';
       btn.querySelector('.p-tx').textContent = t;
       grid.appendChild(btn);
     });
@@ -943,6 +941,7 @@ function getRandomPrompts(count = 4) {
     clearError();
     if (!chat || chat.messages.length === 0) thread.appendChild(buildEmpty());
     else chat.messages.forEach(m => thread.appendChild(buildMessage(m, false)));
+    if (imaging && imgPh && pendingChatId === currentChatId) thread.appendChild(imgPh);
     updateTyping();
     updateHeader();
     if (!chat || chat.messages.length === 0) messagesEl.scrollTop = 0;
@@ -971,7 +970,7 @@ function getRandomPrompts(count = 4) {
   }
 
   function updateTyping() {
-    const show = busy && !imgBusy && pendingChatId === currentChatId;
+    const show = busy && pendingChatId === currentChatId && !imaging;
     typingEl.hidden = !show;
     if (!show) typingText.textContent = '';
     else scrollToBottom(false);
@@ -1200,330 +1199,6 @@ function getRandomPrompts(count = 4) {
     if (imgs.length) { e.preventDefault(); addFiles(imgs); }
   });
 
-  // =====================================================================
-  // IMAGE STUDIO: "image banao" bolte hi image banti hai (FLUX model, server par).
-  // Chat mein sirf chhoti thumbnail save hoti hai. Poori image IndexedDB mein rehti hai.
-  // =====================================================================
-  const IMG_URL = API_URL.replace(/\/chat$/, '/image');
-  const IMG_STYLES = [['auto', 'Auto'], ['photo', 'Photo'], ['cinematic', 'Cinematic'], ['anime', 'Anime'], ['3d', '3D'], ['art', 'Digital art'], ['oil', 'Painting'], ['minimal', 'Minimal']];
-  const IMG_RATIOS = [['1:1', 'Square'], ['3:4', 'Portrait'], ['16:9', 'Wide'], ['9:16', 'Story']];
-  const IMG_QUALITY = [['fast', '⚡ Fast'], ['hd', '✨ HD']];
-  const IMG_IDEAS = [
-    'Neon lights wala cyberpunk shehar, baarish mein', 'Himalaya ke upar sunrise, golden clouds', 'Ek cute robot jo chai pi raha hai',
-    'Royal Bengal tiger jungle mein, close up', 'Space mein tairta astronaut, peeche Earth', 'Anime ladka cherry blossom ke neeche',
-    'Futuristic electric sports car, sunset road', 'Jungle ke beech chhota sa ghar, fairy lights'
-  ];
-  const IMG_WAIT = ['Prompt samajh raha hoon…', 'Colors mix ho rahe hain…', 'Details bana raha hoon…', 'Lighting set ho rahi hai…', 'Bas thoda aur…'];
-  const studio = $('studio'), imgBtn = $('img-btn'), stLeft = $('studio-left');
-  const viewer = $('img-viewer'), viewerImg = $('viewer-img');
-  let viewerMsg = null, healthPinged = false;
-
-  // ---- kab image banani hai (Hinglish + English) ----
-  const V = 'bana(?:o|do|dena|iye|iyega|en)?|bna(?:o|do|dena)?|generate|create|make|draw|paint|render|sketch|imagine';
-  const N = 'images?|imgs?|photos?|pics?|pictures?|tasv[ie]r\\w*|wallpapers?|posters?|logos?|artworks?|illustrations?|paintings?|sketch(?:es)?|drawings?|avatars?|thumbnails?|banners?';
-  const RE_IMG_SLASH = /^\s*\/(?:image|img|imagine|draw)\b\s*/i;
-  const RE_IMG_A = new RegExp('\\b(?:' + N + ')\\b[^.?!\\n]{0,70}?\\b(?:' + V + ')\\b', 'i');   // "sher ki image bana do"
-  const RE_IMG_B = new RegExp('\\b(?:' + V + ')\\b[^.?!\\n]{0,50}?\\b(?:' + N + ')\\b', 'i');   // "generate an image of ..."
-  const RE_IMG_C = /^\s*(?:draw|paint|imagine|sketch)\s+\S/i;                                   // "draw a dragon"
-  const RE_IMG_NOT = /\b(code|coding|python|javascript|html|css|react|java|c\+\+|script|program|canvas|svg|pillow|opencv|matlab|function|api|library|package|tutorial|kaise|kese|kaisey|how\s+to|how\s+do|explain|samjha\w*|meaning|difference|algorithm|compress|resize|convert|crop|photoshop|flowchart|diagram|graph|chart|table|uml|plot)\b/i;
-  const RE_IMG_FILLER = new RegExp('\\b(?:' + V + '|' + N + '|a|an|the|me|mujhe|mere|meri|liye|ke|ki|ka|ek|do|de|dena|please|pls|plz|kar|karo|kya|tum|aap|can|you|could|sakte|sakta|sakti|ho|hai|of|for)\\b', 'ig');
-  function imageIntent(text) {
-    const t = String(text || '').trim();
-    if (!t) return null;
-    if (RE_IMG_SLASH.test(t)) { const sub = t.replace(RE_IMG_SLASH, '').trim(); return sub ? { subject: sub } : { empty: true }; }
-    if (S.mode === 'coder') return null;
-    if (!(RE_IMG_A.test(t) || RE_IMG_B.test(t) || RE_IMG_C.test(t))) return null;
-    if (RE_IMG_NOT.test(t)) return null;
-    const rest = t.replace(RE_IMG_FILLER, ' ').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
-    if (rest.length < 3) return /\?|sakt|can you|could you|\bkya\b/i.test(t) ? null : { empty: true };   // "kya tum image bana sakte ho?" = normal chat
-    return { subject: t };
-  }
-
-  // ---- IndexedDB: poori image yahan, taaki localStorage na bhare ----
-  const idb = (() => {
-    let dbp = null;
-    const open = () => dbp || (dbp = new Promise((res, rej) => {
-      if (!window.indexedDB) { rej(new Error('noidb')); return; }
-      const r = indexedDB.open('jarvis_images', 1);
-      r.onupgradeneeded = () => r.result.createObjectStore('img');
-      r.onsuccess = () => res(r.result);
-      r.onerror = () => rej(r.error);
-    }));
-    const run = (mode, fn) => open().then((db) => new Promise((res, rej) => {
-      const t = db.transaction('img', mode); const o = fn(t.objectStore('img'));
-      t.oncomplete = () => res(o ? o.result : undefined); t.onerror = t.onabort = () => rej(t.error);
-    }));
-    return {
-      put: (k, v) => run('readwrite', (s) => s.put(v, k)).catch(() => {}),
-      get: (k) => run('readonly', (s) => s.get(k)).catch(() => null),
-      keys: () => run('readonly', (s) => s.getAllKeys()).catch(() => []),
-      del: (k) => run('readwrite', (s) => s.delete(k)).catch(() => {})
-    };
-  })();
-  const blobCache = new Map(), urlCache = new Map();
-  function cacheBlob(id, b) { blobCache.set(id, b); if (blobCache.size > 14) blobCache.delete(blobCache.keys().next().value); }
-  async function getBlob(m) {
-    if (!m) return null;
-    let b = blobCache.get(m.imgId) || (m.imgId ? await idb.get(m.imgId) : null);
-    if (b) { cacheBlob(m.imgId, b); return b; }
-    return m.thumb ? dataUrlToBlob(m.thumb) : null;
-  }
-  async function blobUrl(m) {
-    if (m.imgId && urlCache.has(m.imgId)) return urlCache.get(m.imgId);
-    const b = await getBlob(m); if (!b) return '';
-    const u = URL.createObjectURL(b); if (m.imgId) urlCache.set(m.imgId, u);
-    return u;
-  }
-  function dataUrlToBlob(u) {
-    const i = u.indexOf(','), mime = (u.slice(5, i).split(';')[0]) || 'image/png';
-    const bin = atob(u.slice(i + 1)), arr = new Uint8Array(bin.length);
-    for (let k = 0; k < bin.length; k++) arr[k] = bin.charCodeAt(k);
-    return new Blob([arr], { type: mime });
-  }
-  function makeThumb(dataUrl) {
-    return new Promise((resolve) => {
-      const im = new Image();
-      im.onload = () => { try { resolve(drawScaled(im, im.naturalWidth, im.naturalHeight, 384, 0.6)); } catch (e) { resolve(''); } };
-      im.onerror = () => resolve('');
-      im.src = dataUrl;
-    });
-  }
-  // localStorage full ho to sabse naye 6 ko chhod kar baaki image thumbnails hata do (poori image IndexedDB mein safe hai)
-  function shedImageThumbs() {
-    const all = [];
-    allChats.forEach((c) => c.messages.forEach((m) => { if (m.kind === 'image' && m.thumb) all.push(m); }));
-    const drop = all.slice(0, Math.max(0, all.length - 6));
-    drop.forEach((m) => { m.thumb = ''; });
-    return drop.length > 0;
-  }
-  // startup par: jis image ka chat delete ho chuka hai uski file saaf karo
-  (async () => {
-    try {
-      const keep = new Set();
-      allChats.forEach((c) => c.messages.forEach((m) => { if (m.imgId) keep.add(m.imgId); }));
-      for (const k of await idb.keys()) if (!keep.has(k)) idb.del(k);
-    } catch (e) {}
-  })();
-
-  // ---- Studio panel ----
-  function renderStudio() {
-    const fill = (id, items, key, cur) => {
-      const box = $(id); box.replaceChildren();
-      items.forEach(([v, label]) => {
-        const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.dataset.k = key; b.dataset.v = v;
-        b.setAttribute('aria-pressed', String(cur === v));
-        if (key === 'imgRatio') { const i = document.createElement('i'); i.className = 'rx r' + v.replace(':', 'x'); b.append(i, label); } else b.textContent = label;
-        box.appendChild(b);
-      });
-    };
-    fill('st-styles', IMG_STYLES, 'imgStyle', S.imgStyle);
-    fill('st-ratios', IMG_RATIOS, 'imgRatio', S.imgRatio);
-    fill('st-quality', IMG_QUALITY, 'imgQuality', S.imgQuality);
-    const q = $('st-quality'), en = document.createElement('button');
-    en.type = 'button'; en.className = 'chip'; en.dataset.k = 'imgEnhance'; en.textContent = '🪄 Auto-enhance'; en.setAttribute('aria-pressed', String(!!S.imgEnhance)); q.appendChild(en);
-    const ideas = $('st-ideas'); ideas.replaceChildren();
-    IMG_IDEAS.slice().sort(() => 0.5 - Math.random()).slice(0, 5).forEach((t) => {
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'chip idea'; b.dataset.idea = t; b.textContent = t; ideas.appendChild(b);
-    });
-  }
-  function setStudio(on) {
-    studioOn = !!on;
-    studio.hidden = !studioOn;
-    imgBtn.setAttribute('aria-pressed', String(studioOn));
-    input.placeholder = studioOn ? 'Kaisi image banani hai? Jaise: neon shehar mein ek robot…' : 'Message JARVIS…';
-    if (studioOn) {
-      renderStudio();
-      if (!healthPinged) {   // Render ko jagao + check karo ki image setup hai ya nahi
-        healthPinged = true;
-        fetch(API_URL.replace(/\/chat$/, '/health')).then((r) => r.json()).then((j) => { if (j && j.image === false) stLeft.textContent = 'setup baaki (owner)'; }).catch(() => {});
-      }
-      input.focus();
-    }
-  }
-  imgBtn.addEventListener('click', () => setStudio(!studioOn));
-  $('studio-x').addEventListener('click', () => setStudio(false));
-  studio.addEventListener('click', (e) => {
-    const idea = e.target.closest('[data-idea]');
-    if (idea) { input.value = idea.dataset.idea; autosize(); input.focus(); return; }
-    const chip = e.target.closest('[data-k]'); if (!chip) return;
-    const k = chip.dataset.k;
-    if (k === 'imgEnhance') S.imgEnhance = !S.imgEnhance; else S[k] = chip.dataset.v;
-    saveSettings(); renderStudio();
-  });
-
-  // ---- Image card ----
-  const ratioCss = (r) => String(r || '1:1').replace(':', ' / ');
-  const labelOf = (list, v) => (list.find((x) => x[0] === v) || [v, v])[1];
-  function frameEl(ratio) {
-    const f = document.createElement('div'); f.className = 'frame'; f.style.aspectRatio = ratioCss(ratio); return f;
-  }
-  const canShareFiles = (() => { try { return !!(navigator.canShare && navigator.canShare({ files: [new File([''], 'a.png', { type: 'image/png' })] })); } catch (e) { return false; } })();
-  const fullObserver = 'IntersectionObserver' in window ? new IntersectionObserver((ents) => {
-    ents.forEach((e) => { if (e.isIntersecting) { fullObserver.unobserve(e.target); loadFull(e.target); } });
-  }, { rootMargin: '400px' }) : null;
-  async function loadFull(img) {
-    const m = img._msg;
-    const u = m ? await blobUrl(m) : '';
-    if (u) img.src = u;
-    img.classList.add('on');
-  }
-  function fillImageMessage(el, msg) {
-    el.appendChild(makeAvatar('sm'));
-    const col = document.createElement('div'); col.className = 'msg-col';
-    const card = document.createElement('div'); card.className = 'imgcard'; card.dataset.r = msg.ratio || '1:1';
-    const frame = frameEl(msg.ratio);
-    const img = document.createElement('img'); img.className = 'pic'; img.alt = 'Image: ' + (msg.prompt || ''); img.decoding = 'async'; img._msg = msg;
-    if (msg.thumb) { img.src = msg.thumb; img.classList.add('on'); }
-    const fab = document.createElement('div'); fab.className = 'fab';
-    fab.innerHTML = `<button type="button" data-img-view aria-label="Bada dekho" title="Full screen">${icon('expand')}</button><button type="button" data-img-dl aria-label="Download" title="Download">${icon('download')}</button>`;
-    frame.append(img, fab);
-    const cap = document.createElement('div'); cap.className = 'cap'; cap.textContent = msg.prompt || ''; cap.title = 'Poora prompt dekhne ke liye tap karo';
-    const meta = document.createElement('div'); meta.className = 'meta';
-    meta.textContent = [labelOf(IMG_STYLES, msg.style || 'auto'), msg.ratio || '1:1', msg.quality === 'hd' ? 'HD' : 'Fast'].join(' · ');
-    const actions = document.createElement('div'); actions.className = 'msg-actions';
-    actions.innerHTML =
-      `<button class="chip-btn" type="button" data-img-dl aria-label="Download image">${icon('download')}<span>Save</span></button>` +
-      (canShareFiles ? `<button class="chip-btn" type="button" data-img-share aria-label="Share image">${icon('share')}</button>` : '') +
-      `<button class="chip-btn" type="button" data-img-again aria-label="Nayi variation">${icon('retry')}<span>Variation</span></button>` +
-      `<button class="chip-btn" type="button" data-img-remix aria-label="Prompt edit karo">${icon('edit')}<span>Remix</span></button>` +
-      `<button class="chip-btn" type="button" data-img-copy aria-label="Prompt copy karo" title="Copy prompt">${icon('copy')}</button>`;
-    card.append(frame, cap, meta, actions); col.appendChild(card); el.appendChild(col);
-    el._raw = msg.content; el._message = msg;
-    if (fullObserver) fullObserver.observe(img); else loadFull(img);
-  }
-
-  // ---- loading card (skeleton + status) ----
-  function buildImageLoader(ratio, hd) {
-    const el = document.createElement('div'); el.className = 'msg msg-bot imgload enter';
-    el.appendChild(makeAvatar('sm'));
-    const col = document.createElement('div'); col.className = 'msg-col';
-    const card = document.createElement('div'); card.className = 'imgcard'; card.dataset.r = ratio;
-    const frame = frameEl(ratio);
-    const sh = document.createElement('div'); sh.className = 'shimmer';
-    const orb = document.createElement('div'); orb.className = 'orb-ic'; orb.innerHTML = icon('palette');
-    const st = document.createElement('div'); st.className = 'status'; st.setAttribute('aria-live', 'polite');
-    frame.append(sh, orb, st); card.appendChild(frame); col.appendChild(card); el.appendChild(col);
-    let n = 0; const t0 = Date.now();
-    const tick = () => {
-      const sec = Math.round((Date.now() - t0) / 1000);
-      st.textContent = (sec > 14 && n >= 2 ? 'Server jaag raha hai, thoda ruko…' : IMG_WAIT[Math.min(n, IMG_WAIT.length - 1)]) + ' ' + sec + 's';
-    };
-    tick();
-    const iv = setInterval(() => { n++; tick(); }, 2600);
-    const sec = setInterval(tick, 1000);
-    return { el, stop: () => { clearInterval(iv); clearInterval(sec); } };
-  }
-
-  // ---- generate ----
-  async function requestImage(chatId, text, opts) {
-    opts = opts || {};
-    const chat = getChat(chatId);
-    if (!chat || busy) return;
-    const o = { style: opts.style || S.imgStyle, ratio: opts.ratio || S.imgRatio, quality: opts.quality || S.imgQuality };
-    busy = true; imgBusy = true; pendingChatId = chatId;
-    autosize(); clearError(); updateTyping();
-    const controller = new AbortController(); activeController = controller;
-    const timeoutId = setTimeout(() => controller.abort(), 120000);
-    const loader = buildImageLoader(o.ratio, o.quality === 'hd');
-    if (chatId === currentChatId) {
-      const empty = thread.querySelector('.empty'); if (empty) empty.remove();
-      thread.appendChild(loader.el); scrollToBottom(false);
-    }
-    const retry = () => { clearError(); requestImage(chatId, text, opts); };
-    try {
-      let res;
-      res = await fetch(IMG_URL, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
-        body: JSON.stringify({ prompt: text, style: o.style, ratio: o.ratio, quality: o.quality, enhance: !!S.imgEnhance, seed: opts.seed, client_id: CLIENT_ID, user_name: S.name || '' })
-      });
-      let data = null; try { data = await res.json(); } catch (e) {}
-      if (!data || !data.image) {
-        const retryable = !res.status || res.status >= 500 || res.status === 504;
-        throw Object.assign(new Error((data && data.error) || 'Server ne image nahi bheji. Dobara try karo.'), { retryable, soft: true });
-      }
-      const imgId = 'im' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-      const blob = dataUrlToBlob(data.image);
-      cacheBlob(imgId, blob); idb.put(imgId, blob);
-      const thumb = await makeThumb(data.image);
-      const short = String(data.prompt || text).slice(0, 160);
-      const stored = pushMessage(chatId, 'bot', 'Maine ye image banayi: ' + short);
-      if (stored) Object.assign(stored, { kind: 'image', imgId, thumb, prompt: String(data.prompt || text), userText: text, style: o.style, ratio: o.ratio, quality: o.quality, seed: data.seed });
-      loader.stop(); loader.el.remove();
-      if (stored && chatId === currentChatId) appendMessage(stored); else if (chatId !== currentChatId) toast('Tumhari image ban gayi');
-      if (typeof data.remaining === 'number') {
-        stLeft.textContent = data.remaining + '/' + (data.limit || '') + ' bachi';
-        if (data.remaining <= 2) toast('Aaj ki ' + data.remaining + ' images bachi hain');
-      }
-      if (data.hd_fallback) toast('HD busy tha, Fast model se bana di');
-    } catch (err) {
-      loader.stop();
-      if (stoppedByUser) { stoppedByUser = false; toast('Stopped'); }
-      else if (chatId === currentChatId) {
-        if (err && err.soft) showError(err.message, '', err.retryable ? retry : null);
-        else {
-          const timedOut = err && err.name === 'AbortError';
-          showError(timedOut ? 'Image banne mein bahut time lag gaya.' : "Couldn't reach the server.", timedOut ? 'Dobara try karo.' : 'Check your connection and try again.', retry);
-        }
-      }
-    } finally {
-      clearTimeout(timeoutId); loader.stop(); if (loader.el.isConnected) loader.el.remove();
-      busy = false; imgBusy = false; pendingChatId = null; stoppedByUser = false;
-      updateTyping(); autosize();
-      if (window.matchMedia('(pointer: fine)').matches) input.focus();
-    }
-  }
-
-  // ---- download / share / viewer / remix ----
-  const slug = (t) => String(t || 'image').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 32) || 'image';
-  async function downloadImage(m) {
-    const b = await getBlob(m);
-    if (!b) { toast('Image nahi mili'); return; }
-    const ext = /png/.test(b.type) ? 'png' : /webp/.test(b.type) ? 'webp' : 'jpg';
-    const a = document.createElement('a'), u = URL.createObjectURL(b);
-    a.href = u; a.download = 'jarvis-' + slug(m.prompt) + '-' + Date.now().toString(36) + '.' + ext;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(u), 5000);
-    toast('Download shuru');
-  }
-  async function shareImage(m) {
-    const b = await getBlob(m); if (!b) { toast('Image nahi mili'); return; }
-    const f = new File([b], 'jarvis-' + slug(m.prompt) + (/png/.test(b.type) ? '.png' : '.jpg'), { type: b.type });
-    try { await navigator.share({ files: [f], title: 'JARVIS image' }); } catch (e) { /* user ne cancel kiya */ }
-  }
-  async function openViewer(m) {
-    viewerMsg = m;
-    viewerImg.src = m.thumb || ''; viewerImg.alt = m.prompt || '';
-    $('viewer-cap').textContent = m.prompt || '';
-    if (!viewer.open) viewer.showModal();
-    const u = await blobUrl(m); if (u && viewerMsg === m) viewerImg.src = u;
-  }
-  viewer.addEventListener('click', (e) => { if (e.target === viewer) viewer.close(); });
-  $('viewer-close').addEventListener('click', () => viewer.close());
-  $('viewer-dl').addEventListener('click', () => viewerMsg && downloadImage(viewerMsg));
-  thread.addEventListener('click', (e) => {
-    const picEl = e.target.closest('img.pic');
-    const t = e.target.closest('[data-img-dl],[data-img-share],[data-img-again],[data-img-remix],[data-img-copy],[data-img-view]');
-    const capEl = e.target.closest('.imgcard .cap');
-    const host = (t || picEl || capEl) && (t || picEl || capEl).closest('.msg');
-    const m = host && host._message;
-    if (!m || m.kind !== 'image') return;
-    if (capEl && !t) { capEl.classList.toggle('open'); return; }
-    if (picEl && !t) { openViewer(m); return; }
-    if (t.hasAttribute('data-img-view')) openViewer(m);
-    else if (t.hasAttribute('data-img-dl')) downloadImage(m);
-    else if (t.hasAttribute('data-img-share')) shareImage(m);
-    else if (t.hasAttribute('data-img-copy')) copyText(m.prompt || '').then((ok) => toast(ok ? 'Prompt copied' : "Couldn't copy"));
-    else if (t.hasAttribute('data-img-again')) {
-      if (busy) { toast('Pehle image poori hone do'); return; }
-      requestImage(currentChatId, m.userText || m.prompt, { style: m.style, ratio: m.ratio, quality: m.quality });
-    } else if (t.hasAttribute('data-img-remix')) {
-      S.imgStyle = m.style || S.imgStyle; S.imgRatio = m.ratio || S.imgRatio; S.imgQuality = m.quality || S.imgQuality; saveSettings();
-      setStudio(true); renderStudio();
-      input.value = m.prompt || ''; autosize(); input.focus();
-      toast('Prompt edit karo aur send karo');
-    }
-  });
-
   // FIX: Assistant use kiya hai
   const sanitizeForServer = (m) => ({
     role: m.role === 'user' ? 'user' : 'assistant',
@@ -1534,43 +1209,211 @@ function getRandomPrompts(count = 4) {
       .slice(0, 500)
   });
 
+  // ===== Image generation =====
+  const IMG_URL = API_URL.replace(/\/chat$/, '/image');
+  const IMG_TIMEOUT_MS = 150000, IMG_KEEP = 14;
+  const RATIO_CSS = { square: '1 / 1', portrait: '9 / 16', landscape: '16 / 9' };
+  const IMG_STAGES = ['Idea samajh raha hoon…', 'Rang aur light set kar raha hoon…', 'Details bana raha hoon…', 'Bas finishing touches…', 'Thoda time lag raha hai, server busy ho sakta hai…'];
+  const IMG_PREFIX = /^\/(image|img|imagine|draw)\b\s*/i;
+  const IMG_NOUN = /\b(image|images|img|photo|photos|pic|pics|picture|pictures|tasveer|tasvir|wallpaper|logo|poster|painting|artwork|illustration|portrait|drawing|avatar|thumbnail|banner)\b/i;
+  const IMG_VERB = /\b(bana|banao|banado|bana\s?do|bana\s?de|banade|bnao|bna|bnado|banaiye|generate|create|make|draw|design|paint|imagine|render)\b/i;
+  const IMG_NOT = /\b(kaise|kaisey|how|why|kyun|kyu|explain|samjhao|code|script|program|python|html|css|svg|javascript|java|tutorial|api|photoshop|canva|powerpoint|ppt|excel|word|flowchart|diagram|graph|chart|table|name|caption|essay)\b/i;
+  const fullImg = new WeakMap();
+  let imageMode = false, imaging = false, imgPh = null;
+
+  const cleanImgPrompt = (t) => String(t).replace(IMG_PREFIX, '').trim();
+  function wantsImage(t) {
+    t = String(t).trim();
+    if (IMG_PREFIX.test(t)) return true;
+    if (t.length > 400 || IMG_NOT.test(t)) return false;
+    if (/^(draw|paint|imagine)\s+\S+/i.test(t)) return true;
+    return IMG_NOUN.test(t) && IMG_VERB.test(t);
+  }
+
+  function imageMsgs() {
+    const a = [];
+    allChats.forEach((c) => c.messages.forEach((m) => { if (m && m.imgPrompt && m.img) a.push(m); }));
+    return a.sort((x, y) => (y.ts || 0) - (x.ts || 0));
+  }
+  function dropOldImages(keep) { imageMsgs().slice(keep).forEach((m) => { m.img = ''; m.imgGone = true; }); }
+
+  function makeThumb(src, side = 640, q = 0.72) {
+    return new Promise((resolve) => {
+      const im = new Image();
+      im.onload = () => {
+        const k = Math.min(1, side / Math.max(im.width, im.height));
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(im.width * k)); c.height = Math.max(1, Math.round(im.height * k));
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        try { resolve(c.toDataURL('image/jpeg', q)); } catch (e) { resolve(''); }
+      };
+      im.onerror = () => resolve('');
+      im.src = src;
+    });
+  }
+
+  function buildImageCard(msg) {
+    const card = document.createElement('div'); card.className = 'imgcard';
+    const fr = document.createElement('div'); fr.className = 'imgframe';
+    fr.style.setProperty('--ar', RATIO_CSS[msg.ratio] || RATIO_CSS.square);
+    const src = fullImg.get(msg) || msg.img;
+    if (src) {
+      const im = new Image(); im.alt = msg.userPrompt || 'Generated image'; im.decoding = 'async'; im.src = src;
+      im.addEventListener('load', () => { if (im.naturalWidth && im.naturalHeight) fr.style.setProperty('--ar', im.naturalWidth + ' / ' + im.naturalHeight); });
+      fr.appendChild(im);
+    } else {
+      const g = document.createElement('div'); g.className = 'imggone';
+      g.textContent = 'Ye image storage bachane ke liye hata di gayi. Dobara banane ke liye wahi prompt phir bhejo.';
+      fr.appendChild(g);
+    }
+    card.appendChild(fr);
+    if (msg.userPrompt) { const cap = document.createElement('div'); cap.className = 'imgcap'; cap.textContent = msg.userPrompt; card.appendChild(cap); }
+    return card;
+  }
+
+  function buildImgPlaceholder(ratio) {
+    const el = document.createElement('div'); el.className = 'msg msg-bot enter';
+    el.appendChild(makeAvatar('sm'));
+    const col = document.createElement('div'); col.className = 'msg-col';
+    const card = document.createElement('div'); card.className = 'imgcard';
+    const fr = document.createElement('div'); fr.className = 'imgframe loading';
+    fr.style.setProperty('--ar', RATIO_CSS[ratio] || RATIO_CSS.square);
+    fr.innerHTML = '<div class="imgwait">' + icon('imagine') + '<span class="imgstatus"></span></div>';
+    card.appendChild(fr); col.appendChild(card); el.appendChild(col);
+    el._status = fr.querySelector('.imgstatus');
+    return el;
+  }
+
+  async function generateImage(chatId, text, gen) {
+    const chat = getChat(chatId);
+    if (!chat) return;
+    const prompt = cleanImgPrompt(text);
+    busy = true; imaging = true; pendingChatId = chatId;
+    autosize(); clearError(); updateTyping();
+    imgPh = buildImgPlaceholder(gen.ratio);
+    if (chatId === currentChatId) {
+      const empty = thread.querySelector('.empty'); if (empty) empty.remove();
+      thread.appendChild(imgPh); scrollToBottom(false);
+    }
+    let k = 0;
+    const tick = () => { if (imgPh && imgPh._status) imgPh._status.textContent = IMG_STAGES[Math.min(k++, IMG_STAGES.length - 1)]; };
+    tick();
+    const stageTimer = setInterval(tick, 4500);
+    const controller = new AbortController();
+    activeController = controller;
+    const timeoutId = setTimeout(() => controller.abort(), IMG_TIMEOUT_MS);
+    const retry = () => { clearError(); requestReply(chatId, text); };
+    try {
+      const res = await fetch(IMG_URL, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
+        body: JSON.stringify({ prompt, style: gen.style || 'auto', ratio: gen.ratio || 'square', user_name: S.name || '', client_id: CLIENT_ID, mode: 'image' })
+      });
+      let data = null;
+      try { data = await res.json(); } catch (e) { }
+      if (data && typeof data.image === 'string' && data.image.startsWith('data:image/')) {
+        const thumb = await makeThumb(data.image);
+        const stored = pushMessage(chatId, 'bot', 'Image banayi: ' + prompt.slice(0, 200));
+        if (stored) {
+          stored.imgPrompt = String(data.prompt || prompt).slice(0, 900);
+          stored.userPrompt = prompt.slice(0, 300);
+          stored.img = thumb; stored.ratio = gen.ratio || 'square'; stored.style = gen.style || 'auto'; stored.ts = Date.now();
+          if (!thumb) stored.imgGone = true;
+          fullImg.set(stored, data.image);
+          dropOldImages(IMG_KEEP);
+          writeStore();
+        }
+        if (imgPh) { imgPh.remove(); imgPh = null; }
+        if (chatId === currentChatId && stored) appendMessage(stored);
+        if (chatId !== currentChatId) toast('Image ban gayi');
+      } else if (chatId === currentChatId) {
+        showError(data && data.error ? String(data.error) : "Image nahi ban payi.", data ? '' : 'HTTP ' + res.status, retry);
+      }
+    } catch (err) {
+      if (stoppedByUser) toast('Stopped');
+      else if (chatId === currentChatId) {
+        const timedOut = err && err.name === 'AbortError';
+        showError(timedOut ? 'Image banne mein bahut time lag gaya.' : "Couldn't reach the server.", timedOut ? 'Dobara try karo.' : 'Check your connection and try again.', retry);
+      }
+    } finally {
+      clearInterval(stageTimer); clearTimeout(timeoutId);
+      if (imgPh) { imgPh.remove(); imgPh = null; }
+      busy = false; imaging = false; pendingChatId = null; stoppedByUser = false;
+      updateTyping(); autosize();
+      if (window.matchMedia('(pointer: fine)').matches) input.focus();
+    }
+  }
+
+  function downloadImage(msg) {
+    const src = fullImg.get(msg) || msg.img;
+    if (!src) { toast('Image available nahi hai'); return; }
+    const ext = /^data:image\/png/.test(src) ? 'png' : /^data:image\/webp/.test(src) ? 'webp' : 'jpg';
+    const slug = String(msg.userPrompt || 'image').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || 'image';
+    const a = document.createElement('a');
+    a.href = src; a.download = 'jarvis-' + slug + '.' + ext;
+    document.body.appendChild(a); a.click(); a.remove();
+    if (!fullImg.get(msg)) toast('Ye saved chhoti copy hai. Full quality ke liye dobara banao');
+  }
+
+  const lightbox = $('lightbox'), lbImg = $('lb-img');
+  let lbMsg = null;
+  function openLightbox(msg) {
+    const src = fullImg.get(msg) || msg.img;
+    if (!src || !lightbox.showModal) return;
+    lbMsg = msg; lbImg.src = src; lbImg.alt = msg.userPrompt || 'Generated image';
+    lightbox.showModal();
+  }
+  $('lb-close').addEventListener('click', () => lightbox.close());
+  $('lb-dl').addEventListener('click', () => { if (lbMsg) downloadImage(lbMsg); });
+  lightbox.addEventListener('click', (e) => { if (e.target === lightbox) lightbox.close(); });
+
+  // image mode toggle + size/style chips
+  const imgBtn = $('img-btn'), imgBar = $('imgbar'), fieldEl = imgBar.closest('.field');
+  const DEFAULT_PLACEHOLDER = input.getAttribute('placeholder');
+  function setImageMode(on) {
+    imageMode = on;
+    imgBar.hidden = !on; imgBtn.classList.toggle('on', on); imgBtn.setAttribute('aria-pressed', String(on)); fieldEl.classList.toggle('imaging', on);
+    input.setAttribute('placeholder', on ? 'Kya image banani hai? Jaise: neon city mein ek robot…' : DEFAULT_PLACEHOLDER);
+    if (on) input.focus();
+  }
+  function syncImgChips() {
+    imgBar.querySelectorAll('.chips').forEach((g) => g.querySelectorAll('.chip').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.val === (S[g.dataset.key] || '')))));
+  }
+  imgBtn.addEventListener('click', () => setImageMode(!imageMode));
+  $('imgbar-x').addEventListener('click', () => setImageMode(false));
+  imgBar.addEventListener('click', (e) => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    S[b.parentElement.dataset.key] = b.dataset.val; saveSettings(); syncImgChips();
+  });
+  syncImgChips();
+
   async function sendMessage(textOverride) {
     if (busy) return;
     const fromBox = typeof textOverride !== 'string';
     const imgs = fromBox ? pendingImages.slice() : [];
     const text = (fromBox ? input.value : textOverride).trim() || (imgs.length ? 'Is photo ke baare mein batao.' : '');
     if (!text) return;
+    const wantImg = !voiceOn && !imgs.length && (imageMode || wantsImage(text));
+    if (wantImg && !cleanImgPrompt(text)) { toast('Image ka description bhi likho'); return; }
     const chat = getChat();
     if (!chat) return;
-    let wantImg = false, imgText = text;
-    if (!imgs.length) {
-      const it = studioOn ? { subject: text.replace(RE_IMG_SLASH, '') } : imageIntent(text);
-      if (it && it.empty) {
-        setStudio(true);
-        if (fromBox) { input.value = ''; autosize(); }
-        toast('Kaisi image chahiye? Likho aur send karo');
-        return;
-      }
-      if (it) { wantImg = true; imgText = (it.subject || text).trim() || text; }
-    }
     clearError();
     sendBtn.classList.remove('pulse'); void sendBtn.offsetWidth; sendBtn.classList.add('pulse');
     sendBtn.addEventListener('animationend', () => sendBtn.classList.remove('pulse'), { once: true });
     const stored = pushMessage(chat.id, 'user', text);
-    if (stored && wantImg) stored.img = true;
     if (stored && imgs.length) { stored.thumbs = imgs.map((i) => i.thumb); imageCache.set(stored, imgs.map((i) => i.full)); }
+    if (stored && wantImg) stored.gen = { style: S.imgStyle || 'auto', ratio: S.imgRatio || 'square' };
     if (fromBox) { pendingImages = []; renderStrip(); }
     input.value = '';
     autosize();
     await appendMessage(stored || { role: 'user', content: text });
-    if (getChat(chat.id)) await (wantImg ? requestImage(chat.id, imgText) : requestReply(chat.id, text));
+    if (getChat(chat.id)) await requestReply(chat.id, text);
   }
 
   async function requestReply(chatId, text) {
     const chat = getChat(chatId);
     if (!chat) return;
-    const tail = chat.messages[chat.messages.length - 1];
-    if (tail && tail.role === 'user' && tail.img) return requestImage(chatId, text.replace(RE_IMG_SLASH, '') || text);
+    const lm = chat.messages[chat.messages.length - 1];
+    if (lm && lm.role === 'user' && lm.gen) return generateImage(chatId, text, lm.gen);
     busy = true; pendingChatId = chatId;
     autosize();
     clearError();
@@ -1671,6 +1514,11 @@ function getRandomPrompts(count = 4) {
     if (speakBtn) { speak(speakBtn); return; }
     const regenBtn = e.target.closest('[data-regen]');
     if (regenBtn) { regenerate(); return; }
+    const dlBtn = e.target.closest('[data-dl]');
+    if (dlBtn) { const mm = dlBtn.closest('.msg')._message; if (mm) downloadImage(mm); return; }
+    const zoomBtn = e.target.closest('[data-zoom]');
+    const zoomImg = e.target.closest('.imgframe img');
+    if (zoomBtn || zoomImg) { const mm = (zoomBtn || zoomImg).closest('.msg')._message; if (mm) openLightbox(mm); return; }
     const prompt = e.target.closest('[data-prompt]');
     if (prompt) sendMessage(prompt.dataset.prompt);
   });
@@ -1804,8 +1652,8 @@ function getRandomPrompts(count = 4) {
       if (v === m.content) { renderChat(); return; }
       chat.messages.length = idx;
       const st = pushMessage(chat.id, 'user', v);
-      { const it = imageIntent(v); if (st && ((it && !it.empty) || (studioOn && !(m.thumbs && m.thumbs.length)))) st.img = true; }
       if (st && m.thumbs) { st.thumbs = m.thumbs; const fl = imageCache.get(m); if (fl) imageCache.set(st, fl); }
+      if (st && m.gen) st.gen = m.gen;
       persist(); renderChat();
       requestReply(chat.id, v);
     };
