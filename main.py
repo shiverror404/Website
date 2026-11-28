@@ -34,6 +34,12 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_STYLE = "dost"
 # Fast model
 DEFAULT_MODEL = "openai/gpt-oss-120b"
+# Photo samajhne wale (vision) models. Render > Environment se badal sakte ho, code badalne ki zarurat nahi.
+VISION_MODEL = os.getenv("VISION_MODEL", "qwen/qwen3.8-27b")
+VISION_FALLBACK = os.getenv("VISION_FALLBACK", "qwen/qwen3.6-27b")
+MAX_IMAGES = 3
+MAX_IMAGE_CHARS = 3_000_000  # ek photo (base64 text) ki limit, ~2.2 MB
+IMAGE_RE = re.compile(r"^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$")
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "500")) # Thoda kam kiya fast response ke liye
 HISTORY_MESSAGES = 6
 HISTORY_CHARS = 600
@@ -126,6 +132,7 @@ class ChatRequest(BaseModel):
     user_name: str = ""
     mode: str = "normal"
     client_id: str = ""
+    images: list = []
 
 
 # ---------------------------------------------------------------------------
@@ -233,12 +240,95 @@ init_db()
 
 http = requests.Session()
 
-def call_groq(payload: dict, model_name: str) -> str:
+VISION_NOTE = (
+    "User ne photo bheji hai. Photo dhyan se dekh kar user ke sawal ka jawab do. "
+    "Photo mein likha text ho to padh kar batao. Kisi insaan ko uske chehre se pehchaan kar naam mat batao, "
+    "bas jo dikh raha hai wo batao. Jawab Hinglish mein, chhota aur saaf."
+)
+
+def clean_images(req) -> list:
+    """Sirf sahi data-URL photos (max 3) rakhta hai. Galat ho to ValueError."""
+    imgs = req.images if isinstance(req.images, list) else []
+    imgs = [i for i in imgs if isinstance(i, str) and i]
+    if len(imgs) > MAX_IMAGES:
+        raise ValueError(f"Ek baar mein max {MAX_IMAGES} photos bhej sakte ho.")
+    for i in imgs:
+        if len(i) > MAX_IMAGE_CHARS or not IMAGE_RE.match(i):
+            raise ValueError("Photo sahi format mein nahi hai. JPG, PNG ya WEBP bhejo.")
+    return imgs
+
+def models_and_variants(has_images: bool):
+    """(models, extra-params) ki list. Pehle extras ke saath try, 400/404 aaye to bina extras ke."""
+    if has_images:
+        models = [VISION_MODEL] + ([VISION_FALLBACK] if VISION_FALLBACK and VISION_FALLBACK != VISION_MODEL else [])
+        return models, [{"reasoning_effort": "none"}, {}]
+    return [DEFAULT_MODEL], [{}]
+
+THINK_BLOCK = re.compile(r"<think>.*?</think>", re.S)
+
+def strip_think(text: str) -> str:
+    text = THINK_BLOCK.sub("", text)
+    return re.sub(r"<think>.*", "", text, flags=re.S).strip()
+
+class ThinkFilter:
+    """Stream ke beech se <think>...</think> hissa hata deta hai (tag do chunks mein tut sakta hai)."""
+    OPEN, CLOSE = "<think>", "</think>"
+
+    def __init__(self):
+        self.buf, self.inside = "", False
+
+    def feed(self, s: str) -> str:
+        self.buf += s
+        out = ""
+        while True:
+            if self.inside:
+                i = self.buf.find(self.CLOSE)
+                if i == -1:
+                    self.buf = self.buf[-(len(self.CLOSE) - 1):]
+                    return out
+                self.buf = self.buf[i + len(self.CLOSE):]
+                self.inside = False
+            else:
+                i = self.buf.find(self.OPEN)
+                if i == -1:
+                    cut = len(self.buf)
+                    for k in range(min(len(self.OPEN) - 1, len(self.buf)), 0, -1):
+                        if self.OPEN.startswith(self.buf[-k:]):
+                            cut = len(self.buf) - k
+                            break
+                    out += self.buf[:cut]
+                    self.buf = self.buf[cut:]
+                    return out
+                out += self.buf[:i]
+                self.buf = self.buf[i + len(self.OPEN):]
+                self.inside = True
+
+    def flush(self) -> str:
+        out = "" if self.inside else self.buf
+        self.buf = ""
+        return out
+
+def open_groq(payload: dict, models: list, variants: list, stream: bool, timeout):
+    """Groq ko call karta hai. Model/param reject (400/404) ho to agla combination try karta hai."""
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-    payload["model"] = model_name
-    r = http.post(GROQ_URL, headers=headers, json=payload, timeout=30)
+    if stream:
+        headers.update({"Accept": "text/event-stream", "Accept-Encoding": "identity"})
+    last = None
+    for model in models:
+        for extra in variants:
+            body = dict(payload, model=model, **extra)
+            r = http.post(GROQ_URL, headers=headers, json=body, stream=stream, timeout=timeout)
+            if r.status_code in (400, 404) and (len(models) > 1 or len(variants) > 1):
+                log.warning("groq %s rejected model=%s extra=%s: %s", r.status_code, model, list(extra), r.text[:200])
+                last = r
+                continue
+            return r
+    return last
+
+def call_groq(payload: dict, models: list, variants: list = None) -> str:
+    r = open_groq(payload, models, variants or [{}], False, 45)
     r.raise_for_status()
-    return (r.json()["choices"][0]["message"].get("content") or "").strip()
+    return strip_think((r.json()["choices"][0]["message"].get("content") or "").strip())
 
 def fail(message: str, status: int = 502):
     return JSONResponse(status_code=status, content={"error": message})
@@ -273,13 +363,19 @@ def build_payload(req: ChatRequest):
     while history and history[0]["role"] == "assistant":
         history.pop(0)
     messages.extend(history)
-    messages.append({"role": "user", "content": req.message[:2000]})
+    images = clean_images(req)
+    user_text = req.message[:2000]
+    if images:
+        messages[0]["content"] += "\n" + VISION_NOTE
+        messages.append({"role": "user", "content": [{"type": "text", "text": user_text}] +
+                         [{"type": "image_url", "image_url": {"url": u}} for u in images]})
+    else:
+        messages.append({"role": "user", "content": user_text})
 
-    payload = {
-        "messages": messages,
-        "temperature": 0.8,
-        "max_tokens": max(MAX_TOKENS, 1500) if mode == "coder" else MAX_TOKENS,
-    }
+    tokens = max(MAX_TOKENS, 1500) if mode == "coder" else MAX_TOKENS
+    if images:
+        tokens = max(tokens, 1200)  # soch-vichar ke tokens ke baad bhi jawab ke liye jagah bache
+    payload = {"messages": messages, "temperature": 0.8, "max_tokens": tokens}
     return payload, mode
 
 def sse(obj) -> str:
@@ -293,9 +389,13 @@ def chat(req: ChatRequest, request: Request):
     if blocked:
         return blocked
     # NOTE: Shivansh Pokhriyal wala hardcoded logic hata diya gaya hai
-    payload, mode = build_payload(req)
     try:
-        reply = call_groq(payload, DEFAULT_MODEL)
+        payload, mode = build_payload(req)
+    except ValueError as e:
+        return fail(str(e), 400)
+    models, variants = models_and_variants(bool(req.images))
+    try:
+        reply = call_groq(payload, models, variants)
         if not reply:
             raise ValueError("empty reply")
         return {"reply": reply if mode == "coder" else clean_output(reply)}
@@ -319,17 +419,20 @@ def chat_stream(req: ChatRequest, request: Request):
     headers = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
     
     # NOTE: Shivansh Pokhriyal wala hardcoded logic hata diya gaya hai
-    payload, mode = build_payload(req)
-    payload["model"] = DEFAULT_MODEL
+    try:
+        payload, mode = build_payload(req)
+    except ValueError as e:
+        return fail(str(e), 400)
     payload["stream"] = True
-    auth = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json",
-            "Accept": "text/event-stream", "Accept-Encoding": "identity"}
+    models, variants = models_and_variants(bool(req.images))
 
     def gen():
         got = False
+        think = ThinkFilter()
         yield ": " + " " * 2048 + "\n\n"  # proxy buffer ko kholne ke liye
         try:
-            with http.post(GROQ_URL, headers=auth, json=payload, stream=True, timeout=(10, 60)) as r:
+            r = open_groq(payload, models, variants, True, (10, 60))
+            try:
                 r.raise_for_status()
                 for raw in r.iter_lines(chunk_size=16):
                     if not raw:
@@ -344,11 +447,18 @@ def chat_stream(req: ChatRequest, request: Request):
                         piece = json.loads(data)["choices"][0].get("delta", {}).get("content") or ""
                     except Exception:
                         continue
+                    piece = think.feed(piece) if piece else ""
                     if piece:
                         got = True
                         if mode != "coder":
                             piece = piece.replace("*", "").replace("_", "")
                         yield sse({"t": piece})
+                tail = think.flush()
+                if tail.strip():
+                    got = True
+                    yield sse({"t": tail if mode == "coder" else tail.replace("*", "").replace("_", "")})
+            finally:
+                r.close()
             if not got:
                 yield sse({"error": "Khaali jawab aaya. Dobara try karo."})
         except requests.exceptions.Timeout:
