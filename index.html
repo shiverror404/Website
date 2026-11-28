@@ -108,7 +108,7 @@
   [hidden] { display: none !important; }
   ::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 
-  .ic { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .ic { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   /* ambient light + faint HUD grid: painted once, never animated */
@@ -317,6 +317,24 @@
   .send:disabled { background: var(--surface-2); color: var(--muted); box-shadow: none; cursor: not-allowed; }
   .send.stop { background: var(--text); color: var(--bg); box-shadow: 0 0 18px var(--glow); }
   .send.stop .ic { fill: currentColor; }
+
+  /* ---------- composer v2: one rounded pill, + on left, voice/send on right ---------- */
+  .field { position: relative; gap: 0; padding: 4px 5px 4px 5px; border-radius: 26px; }
+  .field-row { display: flex; align-items: flex-end; gap: 2px; }
+  .field textarea { flex: 1; min-width: 0; width: auto; min-height: 24px; max-height: 160px; padding: 8px 6px; }
+  .field .tool { width: 40px; height: 40px; border-radius: 50%; }
+  .field .tool.plus { color: var(--text); }
+  .field .tool.plus:hover { color: var(--accent); }
+  .field .tool.plus .ic { transition: transform .2s; }
+  .field .tool.plus.open .ic { transform: rotate(45deg); }
+  .field .send { margin-left: 2px; border-radius: 50%; }
+  .field:not(.has-text) #send-btn { display: none; }
+  .field.has-text #voice-btn { display: none; }
+  .field .attach-strip { padding: 8px 8px 4px; }
+  .plus-menu { position: absolute; left: 4px; bottom: calc(100% + 10px); z-index: 5; min-width: 190px; padding: 6px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow), 0 0 24px var(--glow-soft); }
+  .plus-menu button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 46px; padding: 0 12px; border-radius: 10px; text-align: left; font-weight: 600; }
+  .plus-menu button:hover, .plus-menu button:active { background: var(--surface-2); }
+  .plus-menu .ic { color: var(--accent); }
   .foot-note { margin-top: 8px; text-align: center; font-size: .72rem; color: var(--muted); }
   .jump { position: absolute; right: 16px; top: -48px; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow), 0 0 16px var(--glow-soft); color: var(--text); }
   .jump:hover { border-color: var(--accent); }
@@ -440,35 +458,36 @@
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
-  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
-  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
-  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V4h6v3"/></symbol>
-  <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
-  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/></symbol>
-  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
-  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></symbol>
-  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4 8 8 0 1020 14.5z"/></symbol>
-  <symbol id="i-eraser" viewBox="0 0 24 24"><path d="M20 20H9l-5-5a2 2 0 010-3l9-9a2 2 0 013 0l4 4a2 2 0 010 3L11 20M8 9l7 7"/></symbol>
-  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
-  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0114-5.3L20 9M20 4v5h-5M20 12a8 8 0 01-14 5.3L4 15M4 20v-5h5"/></symbol>
-  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
-  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3H7l3-3-1-6zM12 13v7"/></symbol>
-  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/></symbol>
-  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></symbol>
-  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2L12 3z"/></symbol>
-  <symbol id="i-code" viewBox="0 0 24 24"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/></symbol>
-  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0012 3z"/></symbol>
-  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></symbol>
-  <symbol id="i-wave" viewBox="0 0 24 24"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/></symbol>
-  <symbol id="i-imagine" viewBox="0 0 24 24"><path d="M4 20L13 11M14 4l1.3 3L18.3 8.3 15.3 9.6 14 12.6 12.7 9.6 9.7 8.3 12.7 7 14 4zM19 14l.8 1.8 1.8.8-1.8.8L19 19.2l-.8-1.8-1.8-.8 1.8-.8L19 14z"/></symbol>
-  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
-  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5L8 19"/></symbol>
-  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></symbol>
-  <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zM17 8.5a5 5 0 010 7"/></symbol>
-  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
-  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></symbol>
-  <symbol id="i-thumbup" viewBox="0 0 24 24"><path d="M7 10v12"/><path d="M15 5.9L14 10h5.8a2 2 0 011.9 2.6l-2.3 8a2 2 0 01-1.9 1.4H4a2 2 0 01-2-2v-8a2 2 0 012-2h2.8a2 2 0 001.8-1.1L12 2a3.1 3.1 0 013 3.9z"/></symbol>
-  <symbol id="i-thumbdown" viewBox="0 0 24 24"><path d="M17 14V2"/><path d="M9 18.1L10 14H4.2a2 2 0 01-1.9-2.6l2.3-8A2 2 0 016.5 2H20a2 2 0 012 2v8a2 2 0 01-2 2h-2.8a2 2 0 00-1.8 1.1L12 22a3.1 3.1 0 01-3-3.9z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-17.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-eraser" viewBox="0 0 24 24"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7M5 11l9 9"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14m7-7-7 7-7-7"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M10 5H3M12 19H3M14 3v4M16 17v4M21 12h-9M21 19h-5M21 5h-7M8 10v4M8 12H3"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4M22 5h-4M4 17v2M5 18H3"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5M9 18h6M10 22h4"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 24 24"><path d="M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></symbol>
+  <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6M19.364 18.364a9 9 0 0 0 0-12.728"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect width="14" height="14" x="5" y="5" rx="2"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+  <symbol id="i-thumbup" viewBox="0 0 24 24"><path d="M7 10v12M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></symbol>
+  <symbol id="i-thumbdown" viewBox="0 0 24 24"><path d="M17 14V2M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></symbol>
+  <symbol id="i-imagine" viewBox="0 0 24 24"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72M14 7l3 3M5 6v4M19 14v4M10 2v2M7 8H3M21 16h-4M11 3H9"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M15 3h6v6M21 3l-7 7M3 21l7-7M9 21H3v-6"/></symbol>
 </svg>
 
 <div class="app" id="app">
@@ -515,16 +534,20 @@
     <div class="composer">
       <button class="jump" id="jump-btn" type="button" aria-label="Scroll to latest message" hidden><svg class="ic"><use href="#i-down"/></svg></button>
       <div class="composer-inner">
-        <div class="field">
+        <div class="field" id="field">
+          <div class="plus-menu" id="plus-menu" hidden>
+            <button type="button" id="pm-photo"><svg class="ic"><use href="#i-image"/></svg>Photo upload</button>
+            <button type="button" id="pm-camera"><svg class="ic"><use href="#i-camera"/></svg>Camera</button>
+          </div>
           <div class="attach-strip" id="attach-strip" hidden></div>
-          <label class="sr-only" for="user-input">Message JARVIS</label>
-          <textarea id="user-input" rows="1" placeholder="Message JARVIS…" enterkeyhint="send" autocomplete="off"></textarea>
-          <input type="file" id="file-input" accept="image/*" multiple hidden>
-          <div class="field-bar">
-            <button class="tool attach" id="attach-btn" type="button" aria-label="Photo bhejein" title="Photo bhejein"><svg class="ic"><use href="#i-image"/></svg></button>
-            <span class="grow"></span>
-            <button class="tool" id="voice-btn" type="button" aria-label="Voice mode" title="Voice mode"><svg class="ic"><use href="#i-wave"/></svg></button>
+          <div class="field-row">
+            <button class="tool plus" id="attach-btn" type="button" aria-label="Photo ya camera" aria-haspopup="true" title="Photo ya camera"><svg class="ic"><use href="#i-plus"/></svg></button>
+            <label class="sr-only" for="user-input">Message JARVIS</label>
+            <textarea id="user-input" rows="1" placeholder="Message JARVIS…" enterkeyhint="send" autocomplete="off"></textarea>
+            <input type="file" id="file-input" accept="image/*" multiple hidden>
+            <input type="file" id="cam-input" accept="image/*" capture="environment" hidden>
             <button class="tool" id="mic-btn" type="button" aria-label="Speak your message" title="Bol kar likhein"><svg class="ic"><use href="#i-mic"/></svg></button>
+            <button class="send voice-cta" id="voice-btn" type="button" aria-label="Voice mode" title="Voice mode"><svg class="ic"><use href="#i-wave"/></svg></button>
             <button class="send" id="send-btn" type="button" aria-label="Send message" disabled><svg class="ic"><use href="#i-send"/></svg></button>
           </div>
         </div>
@@ -1093,6 +1116,7 @@ function getRandomPrompts(count = 4) {
       input.style.height = Math.min(input.scrollHeight, 150) + 'px';
     }
     sendBtn.disabled = !busy && !input.value.trim() && !pendingImages.length;
+    $('field').classList.toggle('has-text', busy || !!input.value.trim() || pendingImages.length > 0 || $('voice-btn').hidden);
     const mode = busy ? 'stop' : 'send';
     if (sendBtn.dataset.mode !== mode) {
       sendBtn.dataset.mode = mode;
@@ -1158,7 +1182,14 @@ function getRandomPrompts(count = 4) {
     }
     attachBtn.disabled = false; renderStrip(); autosize();
   }
-  attachBtn.addEventListener('click', () => fileInput.click());
+  const plusMenu = $('plus-menu'), camInput = $('cam-input');
+  const closePlus = () => { plusMenu.hidden = true; attachBtn.classList.remove('open'); };
+  attachBtn.addEventListener('click', (e) => { e.stopPropagation(); plusMenu.hidden = !plusMenu.hidden; attachBtn.classList.toggle('open', !plusMenu.hidden); });
+  $('pm-photo').addEventListener('click', () => { closePlus(); fileInput.click(); });
+  $('pm-camera').addEventListener('click', () => { closePlus(); camInput.click(); });
+  camInput.addEventListener('change', () => { addFiles(camInput.files); camInput.value = ''; });
+  document.addEventListener('click', (e) => { if (!plusMenu.hidden && !plusMenu.contains(e.target)) closePlus(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !plusMenu.hidden) closePlus(); });
   fileInput.addEventListener('change', () => { addFiles(fileInput.files); fileInput.value = ''; });
   input.addEventListener('paste', (e) => {
     const imgs = Array.from((e.clipboardData && e.clipboardData.files) || []).filter((f) => /^image\//.test(f.type));
