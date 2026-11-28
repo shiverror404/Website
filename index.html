@@ -1600,6 +1600,7 @@ function getRandomPrompts(count = 4) {
     try {
       res = await fetch(API_URL + '/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, history, mode: S.mode, user_name: S.name || '', client_id: CLIENT_ID, voice: voiceOn, images: images && images.length ? images : undefined }), signal });
     } catch (e) { if (e && e.name === 'AbortError') throw e; return false; }
+    dbg('chat stream HTTP ' + res.status);
     if (!res.ok || !res.body) return false;
 
     let acc = '', el = null, body = null, timer = 0, err = '', live = false;
@@ -2039,10 +2040,12 @@ function getRandomPrompts(count = 4) {
     try {
       const text = await transcribe(blob);
       if (!voiceOn || my !== vToken) return;
+      dbg('STT: ' + (text ? text.slice(0, 30) : '(khaali)'));
       if (!text) { toast('Samajh nahi aaya, dobara bolo'); return; }
       vText.textContent = text;
       await sendMessage(text);
     } catch (e) {
+      dbg('STT FAIL: ' + ((e && e.message) || e));
       if (voiceOn && my === vToken) toast('Awaaz samajh nahi aayi, dobara bolo');
     } finally {
       vBusy = false;
@@ -2053,7 +2056,7 @@ function getRandomPrompts(count = 4) {
     if (!HAS_MIC) { toast('Is browser mein mic support nahi hai. Chrome ya Safari use karo'); return; }
     if (voiceOn) return;
     voiceOn = true; vToken++; voiceEl.hidden = false; vSet('idle', 'Mic chalu ho raha hai…'); vText.textContent = '';
-    player.stop(); player.unlock();
+    player.stop(); player.unlock(); dbg('BUILD v3 - voice mode khula');
     try { fetch(API_URL.replace(/\/chat$/, '/health'), { cache: 'no-store' }).catch(() => {}); } catch (e) {} // server ko jagao
     const rec = createRecorder({
       endSilenceMs: 750,
