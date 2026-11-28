@@ -1645,7 +1645,7 @@ function getRandomPrompts(count = 4) {
               thread.appendChild(el);
               typingEl.hidden = true;
             }
-            if (!acc && (voiceOn || S.autoread === 'on')) { live = true; player.begin(voiceOn ? vResume : null); }
+            if (!acc && (voiceOn || S.autoread === 'on')) { live = true; player.begin(voiceOn ? vResume : null); dbg('jawab aana shuru, bolna queue mein'); }
             acc += j.t;
             if (live) { player.feed(j.t); if (voiceOn) vText.textContent = acc.length > 150 ? '…' + acc.slice(-150) : acc; }
             schedule();
@@ -1838,6 +1838,17 @@ function getRandomPrompts(count = 4) {
   }
 
   // ---- bolne wala: text ko vakyon mein todta hai, har vakya /tts se laata hai, ek ke baad ek bajata hai
+  const _dbgLines = [];
+  function dbg(m) {
+    try {
+      _dbgLines.push(new Date().toTimeString().slice(3, 8) + ' ' + m); if (_dbgLines.length > 6) _dbgLines.shift();
+      console.log('[JARVIS]', m);
+      const host = document.getElementById('voice'); if (!host) return;
+      let el = document.getElementById('v-dbg');
+      if (!el) { el = document.createElement('div'); el.id = 'v-dbg'; el.style.cssText = 'position:absolute;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));font:11px/1.4 monospace;opacity:.75;text-align:left;white-space:pre-wrap;pointer-events:none'; host.appendChild(el); }
+      el.textContent = _dbgLines.join('\n');
+    } catch (e) {}
+  }
   const EMOJI_RE = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu;
   const speakable = (t) => String(t || '')
     .replace(/```[\s\S]*?```/g, ' code chat mein hai. ').replace(/https?:\/\/\S+/g, ' ').replace(EMOJI_RE, '')
@@ -1871,6 +1882,7 @@ function getRandomPrompts(count = 4) {
     async function fetchAudio(text) {
       if (Date.now() < downUntil) return null;            // server TTS abhi band hai -> seedha browser voice
       const ctrl = new AbortController(), to = setTimeout(() => ctrl.abort(), 25000);
+      dbg('TTS maang raha: ' + text.slice(0, 25));
       try {
         const r = await fetch(TTS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, voice: S.voice, client_id: CLIENT_ID }), signal: ctrl.signal });
         if (!r.ok || r.status === 204) {
@@ -1880,11 +1892,11 @@ function getRandomPrompts(count = 4) {
         }
         const b = await r.blob();
         if (!b.size) throw new Error('empty audio');
-        fails = 0;
+        fails = 0; dbg('TTS server OK ' + Math.round(b.size / 1024) + 'KB');
         return URL.createObjectURL(b.type ? b : new Blob([b], { type: 'audio/mpeg' }));
       } catch (e) {
         lastWhy = (e && e.message) || 'tts failed';
-        console.warn('[JARVIS] server TTS fail:', lastWhy);
+        dbg('TTS server FAIL: ' + lastWhy.slice(0, 70));
         if (++fails >= 2) { downUntil = Date.now() + 20000; fails = 0; }
         return null;
       } finally { clearTimeout(to); }
@@ -1924,12 +1936,12 @@ function getRandomPrompts(count = 4) {
         const stopFn = () => finish(true);   // stop() ne roka: bas aage badho (caller gen check karta hai)
         curRes = stopFn;
         keepUtter.add(u);
-        u.onstart = () => { started = true; clearTimeout(wdStart); };
+        u.onstart = () => { started = true; dbg('browser voice shuru'); clearTimeout(wdStart); };
         u.onend = () => finish(true);
-        u.onerror = (e) => finish(!!(e && (e.error === 'interrupted' || e.error === 'canceled')));
+        u.onerror = (e) => { dbg('browser voice error: ' + (e && e.error)); finish(!!(e && (e.error === 'interrupted' || e.error === 'canceled'))); };
         try { if (ss.speaking || ss.pending) ss.cancel(); } catch (e) {}
         setTimeout(() => { if (done) return; try { ss.resume(); ss.speak(u); } catch (e) { finish(false); } }, 80); // cancel() ke turant baad speak() Chrome mein gayab ho jata hai
-        wdStart = setTimeout(() => { if (!started) { try { ss.cancel(); } catch (e) {} finish(false); } }, 6000);
+        wdStart = setTimeout(() => { if (!started) { dbg('browser voice start NAHI hui'); try { ss.cancel(); } catch (e) {} finish(false); } }, 6000);
         wdMax = setTimeout(() => { try { ss.cancel(); } catch (e) {} finish(true); }, 8000 + text.length * 120);
       });
     }
@@ -1945,12 +1957,12 @@ function getRandomPrompts(count = 4) {
         };
         const stopFn = () => finish(true);
         curRes = stopFn;
-        audio.onended = () => finish(true);
-        audio.onerror = () => finish(false);           // decode/network error -> browser voice
-        audio.onplaying = () => clearTimeout(wd);
+        audio.onended = () => { dbg('audio poora baja'); finish(true); };
+        audio.onerror = () => { dbg('audio ERROR (decode)'); finish(false); };           // decode/network error -> browser voice
+        audio.onplaying = () => { dbg('audio chal pada'); clearTimeout(wd); };
         audio.src = url;
         wd = setTimeout(() => { try { audio.pause(); } catch (e) {} finish(false); }, 8000);
-        const p = audio.play(); if (p && p.catch) p.catch(() => finish(false)); // autoplay block -> browser voice (pehle yahan chup-chaap skip ho jata tha)
+        const p = audio.play(); if (p && p.catch) p.catch((e) => { dbg('audio.play BLOCKED: ' + (e && e.name)); finish(false); }); // autoplay block -> browser voice (pehle yahan chup-chaap skip ho jata tha)
       });
     }
 
