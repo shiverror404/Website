@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import hmac
 import json
@@ -8,15 +9,22 @@ import re
 import sqlite3
 import threading
 import time
+from collections import OrderedDict
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from urllib.parse import quote
 
 import requests
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import FastAPI, Header, HTTPException, Request, Response
+from starlette.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
+
+try:
+    import edge_tts  # pip install edge-tts  (natural Hindi/English neural awaaz)
+except Exception:  # package na ho to /tts band rahega, app browser voice par chalega
+    edge_tts = None
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis")
@@ -110,6 +118,15 @@ TIP_FORMAT_RULE = (
     "- No stars or bold tags for the word Tip.\n"
 )
 
+VOICE_NOTE = (
+    "VOICE CALL MODE: the user is talking to you by voice and your reply will be SPOKEN ALOUD.\n"
+    "- Reply in 1 to 3 short, natural spoken sentences, like a friend on a phone call.\n"
+    "- No emojis, no lists, no numbering, no code, no markdown, no 'Tip'.\n"
+    "- Use simple everyday words. Write Hinglish in Roman letters (never Devanagari).\n"
+    "- If the answer is long, give the short answer first and offer to explain more.\n"
+    "- If code is needed, say you are putting it in the chat instead of reading it out.\n"
+)
+
 MODE_NOTES = {
     "study": "STUDY MODE: explain step by step like a patient teacher, with one simple example. Use plain numbering like 1. 2. 3. for steps.",
     "coder": "CODER MODE: you are an expert programmer. Put working code inside fenced code blocks with the language name. Keep the explanation short and practical.",
@@ -146,6 +163,7 @@ class ChatRequest(BaseModel):
     mode: str = "normal"
     client_id: str = ""
     images: list = []
+    voice: bool = False  # True = voice mode, jawab bolkar sunaya jayega
 
 
 # ---------------------------------------------------------------------------
@@ -270,12 +288,15 @@ def clean_images(req) -> list:
             raise ValueError("Photo sahi format mein nahi hai. JPG, PNG ya WEBP bhejo.")
     return imgs
 
-def models_and_variants(has_images: bool):
+def models_and_variants(has_images: bool, mode: str = "normal", voice: bool = False):
     """(models, extra-params) ki list. Pehle extras ke saath try, 400/404 aaye to bina extras ke."""
     if has_images:
         models = [VISION_MODEL] + ([VISION_FALLBACK] if VISION_FALLBACK and VISION_FALLBACK != VISION_MODEL else [])
         return models, [{"reasoning_effort": "none"}, {}]
-    return [DEFAULT_MODEL], [{}]
+    # gpt-oss reasoning model hai: bina limit ke wo jawab se pehle kai second "sochta" hai (yahi bada delay tha).
+    # Chat/voice ke liye 'low' kaafi hai; sirf coder mode mein thoda zyada sochne do.
+    effort = "medium" if (mode == "coder" and not voice) else "low"
+    return [DEFAULT_MODEL], [{"reasoning_effort": effort}, {}]
 
 THINK_BLOCK = re.compile(r"<think>.*?</think>", re.S)
 
@@ -349,7 +370,8 @@ def fail(message: str, status: int = 502):
 @app.get("/")
 @app.get("/health")
 def health():
-    return {"status": "ok", "bot": BOT_NAME, "stream": True, "image": image_providers_ready()}
+    return {"status": "ok", "bot": BOT_NAME, "stream": True, "image": image_providers_ready(),
+            "stt": bool(GROQ_API_KEY), "tts": edge_tts is not None}
 
 def build_payload(req: ChatRequest):
     mode = req.mode if req.mode in MODE_NOTES else "normal"
@@ -358,6 +380,8 @@ def build_payload(req: ChatRequest):
         system = system.replace(LANGUAGE_RULE, CODER_LANGUAGE_RULE)
     if mode in MODE_NOTES:
         system += "\n" + MODE_NOTES[mode]
+    if req.voice:
+        system += "\n" + VOICE_NOTE
     messages = [{"role": "system", "content": system}]
 
     history = []
@@ -388,6 +412,8 @@ def build_payload(req: ChatRequest):
     tokens = max(MAX_TOKENS, 1500) if mode == "coder" else MAX_TOKENS
     if images:
         tokens = max(tokens, 1200)  # soch-vichar ke tokens ke baad bhi jawab ke liye jagah bache
+    if req.voice and not images:
+        tokens = min(tokens, 260)  # bolne wala jawab chhota hi chahiye
     payload = {"messages": messages, "temperature": 0.8, "max_tokens": tokens}
     return payload, mode
 
@@ -406,7 +432,7 @@ def chat(req: ChatRequest, request: Request):
         payload, mode = build_payload(req)
     except ValueError as e:
         return fail(str(e), 400)
-    models, variants = models_and_variants(bool(req.images))
+    models, variants = models_and_variants(bool(req.images), mode, req.voice)
     try:
         reply = call_groq(payload, models, variants)
         if not reply:
@@ -437,7 +463,7 @@ def chat_stream(req: ChatRequest, request: Request):
     except ValueError as e:
         return fail(str(e), 400)
     payload["stream"] = True
-    models, variants = models_and_variants(bool(req.images))
+    models, variants = models_and_variants(bool(req.images), mode, req.voice)
 
     def gen():
         got = False
@@ -694,6 +720,214 @@ def make_image(req: ImageRequest, request: Request):
     log.info("image ok via %s (%d KB)", provider, len(data) // 1024)
     return {"image": f"data:{mime};base64," + base64.b64encode(data).decode("ascii"),
             "prompt": final, "seed": seed, "width": w, "height": h}
+
+
+# ---------------------------------------------------------------------------
+# VOICE: /stt (awaaz -> text, Groq Whisper) aur /tts (text -> natural awaaz, Edge neural voices)
+# Browser ka SpeechRecognition (jo har baar Google wali "ting" bajata tha) ab use nahi hota.
+# ---------------------------------------------------------------------------
+STT_MODEL = os.getenv("STT_MODEL", "whisper-large-v3-turbo")
+STT_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
+STT_MAX_BYTES = 4_000_000
+# Roman-script Hinglish ka namuna: Whisper ko batata hai ki kis tarah ka text chahiye
+STT_PROMPT_HI = "Haan bhai, kya haal hai? Mujhe batao, aaj ka plan kya hai? Theek hai, chalo shuru karte hain."
+STT_HALLUCINATIONS = ("thanks for watching", "thank you for watching", "subtitles by", "amara.org", "please subscribe")
+_voice_hits = {}
+
+def voice_rate_ok(ip: str, limit: int = 90) -> bool:
+    """Ek IP se 1 minute mein limit se zyada voice calls nahi."""
+    now = time.time()
+    recent = [t for t in _voice_hits.get(ip, []) if now - t < 60]
+    if len(recent) >= limit:
+        _voice_hits[ip] = recent
+        return False
+    recent.append(now)
+    _voice_hits[ip] = recent
+    if len(_voice_hits) > 5000:
+        for k in [k for k, v in _voice_hits.items() if not v or now - v[-1] > 120]:
+            _voice_hits.pop(k, None)
+    return True
+
+def voice_gate(request: Request, cid_raw: str):
+    """Maintenance / blocked device check (message count nahi badhata). Error response ya None."""
+    ip = request.client.host if request.client else "?"
+    if not voice_rate_ok(ip):
+        return fail("Bahut jaldi jaldi bol rahe ho. Thoda ruko.", 429)
+    try:
+        if get_setting("paused") == "1":
+            return fail(get_setting("pause_message") or "JARVIS abhi maintenance mein hai. Thodi der baad aana.", 503)
+        cid = clean_cid(cid_raw)
+        if cid:
+            with db() as c:
+                row = c.execute("SELECT blocked FROM users WHERE client_id=?", (cid,)).fetchone()
+            if row and row[0]:
+                return fail("Is device ka access band kar diya gaya hai.", 403)
+    except Exception:
+        log.exception("voice gate failed")
+    return None
+
+def _stt_sync(data: bytes, mime: str, lang: str) -> str:
+    ext = "wav" if "wav" in mime else "webm" if "webm" in mime else "mp4" if ("mp4" in mime or "m4a" in mime) else "ogg" if "ogg" in mime else "wav"
+    form = {"model": STT_MODEL, "response_format": "verbose_json", "temperature": "0"}
+    if lang in ("hi", "en"):
+        form["language"] = lang
+    if lang == "hi":
+        form["prompt"] = STT_PROMPT_HI
+    r = http.post(STT_URL, headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                  files={"file": (f"speech.{ext}", data, mime or "audio/wav")}, data=form, timeout=(8, 30))
+    r.raise_for_status()
+    j = r.json()
+    segs = j.get("segments") or []
+    if segs:
+        # jin tukdon mein Whisper ko khud "yahan awaaz nahi hai" lage unhe hata do (khamoshi par fake text aata hai)
+        text = " ".join(str(sg.get("text", "")) for sg in segs
+                        if not (sg.get("no_speech_prob", 0) > 0.6 and sg.get("avg_logprob", 0) < -0.8))
+    else:
+        text = j.get("text", "")
+    text = re.sub(r"\s+", " ", text).strip()
+    low = text.lower()
+    if any(h in low for h in STT_HALLUCINATIONS):
+        return ""
+    return text
+
+@app.post("/stt")
+async def speech_to_text(request: Request, lang: str = "hi", x_client_id: str = Header(default="")):
+    """Body = raw audio (wav/webm/mp4). Jawab: {"text": "..."}"""
+    if not GROQ_API_KEY:
+        return fail("Server setup adhura hai: GROQ_API_KEY set nahi hai.", 500)
+    blocked = voice_gate(request, x_client_id)
+    if blocked:
+        return blocked
+    data = await request.body()
+    if len(data) < 1500:
+        return {"text": ""}
+    if len(data) > STT_MAX_BYTES:
+        return fail("Audio bahut lamba hai. Chhota bolo.", 413)
+    mime = (request.headers.get("content-type") or "audio/wav").split(";")[0].strip().lower()
+    try:
+        text = await run_in_threadpool(_stt_sync, data, mime, lang if lang in ("hi", "en") else "hi")
+        return {"text": text[:1000]}
+    except requests.exceptions.Timeout:
+        return fail("Awaaz samajhne mein der lag gayi. Dobara bolo.", 504)
+    except requests.exceptions.HTTPError as e:
+        code = e.response.status_code if e.response is not None else 0
+        log.warning("stt http error %s", code)
+        return fail(f"Awaaz samajhne wala server busy hai (code {code}). Thodi der baad try karo.", 502)
+    except Exception:
+        log.exception("stt failed")
+        return fail("Awaaz samajh nahi aayi. Dobara bolo.", 502)
+
+
+TTS_VOICES = {
+    "madhur": "hi-IN-MadhurNeural",    # Hindi male
+    "swara": "hi-IN-SwaraNeural",      # Hindi female
+    "prabhat": "en-IN-PrabhatNeural",  # Indian-English male
+    "neerja": "en-IN-NeerjaNeural",    # Indian-English female
+}
+TTS_DEFAULT_VOICE = os.getenv("TTS_VOICE", "madhur")
+TTS_RATE = os.getenv("TTS_RATE", "+0%")
+TRANSLIT_MODEL = os.getenv("TRANSLIT_MODEL", "llama-3.1-8b-instant")
+TRANSLIT_SYSTEM = (
+    "You prepare Hinglish text for a Hindi text-to-speech engine. Rewrite the text so that every Hindi word is in "
+    "Devanagari script, while every English word stays in English (Latin) letters. Keep punctuation, numbers, names "
+    "and meaning exactly the same. Do not translate, add, remove or explain anything. Output only the rewritten text."
+)
+# Roman Hindi ke aam shabd (English se na takrane wale). Inme se koi mile to text Hinglish maana jata hai.
+HINDI_HINTS = set((
+    "hai hain nahi nahin kya kyu kyun kaise kaisa kaisi kaun kab kahan aap aapka aapki tum tumhe tumhara mujhe mera meri mere "
+    "tera teri tere bhai yaar haan hoon hu hoga hogi karo karna karte kar raha rahi rahe wala wali bahut bohot accha acha "
+    "theek thik aur lekin kuch koi abhi chalo batao bolo bol dost arre arrey sab kal aaj mat sakta sakte sakti chahiye "
+    "matlab samjha samjhe liye isme usme yeh woh iska uska ke ki ka mein pe hota hote dena lena jao aao dekho suno sunao "
+    "bata bataya banaya shukriya dhanyavad namaste kitna kitni kitne kaam padhai ghar paisa mast maza"
+).split())
+_tts_cache = OrderedDict()
+_translit_cache = {}
+_translit_lock = threading.Lock()
+EMOJI_RE = re.compile("[\U0001F300-\U0001FAFF\u2600-\u27BF\uFE0F\u200d]")
+
+def clean_tts_text(text: str) -> str:
+    text = re.sub(r"```[\s\S]*?```", " code chat mein hai. ", text or "")
+    text = re.sub(r"https?://\S+", " ", text)
+    text = EMOJI_RE.sub("", text)
+    text = re.sub(r"(?im)^\s*tip\s*:-?\s*", "Tip. ", text)
+    text = re.sub(r"[*_`#>~|]", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+def needs_translit(text: str) -> bool:
+    return any(w in HINDI_HINTS for w in re.findall(r"[a-z]+", text.lower()))
+
+def to_devanagari(text: str) -> str:
+    """Roman Hinglish -> Hindi shabd Devanagari mein (English shabd waise hi). Fail ho to original text."""
+    with _translit_lock:
+        if text in _translit_cache:
+            return _translit_cache[text]
+    try:
+        payload = {"messages": [{"role": "system", "content": TRANSLIT_SYSTEM}, {"role": "user", "content": text}],
+                   "temperature": 0, "max_tokens": 600}
+        r = open_groq(payload, [TRANSLIT_MODEL, DEFAULT_MODEL], [{}], False, (5, 10))
+        r.raise_for_status()
+        out = strip_think((r.json()["choices"][0]["message"].get("content") or "").strip()).strip("\"' ")
+        if not out or len(out) > len(text) * 3 + 20 or "\n\n" in out:
+            return text
+    except Exception as e:
+        log.warning("translit failed: %s", type(e).__name__)
+        return text
+    with _translit_lock:
+        if len(_translit_cache) > 300:
+            _translit_cache.clear()
+        _translit_cache[text] = out
+    return out
+
+class TTSRequest(BaseModel):
+    text: str
+    voice: str = ""
+    client_id: str = ""
+
+async def _edge_synth(text: str, voice: str) -> bytes:
+    comm = edge_tts.Communicate(text, voice, rate=TTS_RATE)
+    out = bytearray()
+    async for ch in comm.stream():
+        if ch.get("type") == "audio":
+            out += ch["data"]
+    return bytes(out)
+
+@app.post("/tts")
+async def text_to_speech(req: TTSRequest, request: Request):
+    """Text -> mp3 (natural neural awaaz). Fail ho to JSON error; app browser voice par chala jata hai."""
+    if edge_tts is None:
+        return fail("TTS install nahi hai (requirements.txt mein edge-tts add karo).", 501)
+    blocked = voice_gate(request, req.client_id)
+    if blocked:
+        return blocked
+    text = clean_tts_text(req.text)[:600]
+    if not re.search(r"\w", text):
+        return Response(status_code=204)
+    key_name = req.voice if req.voice in TTS_VOICES else TTS_DEFAULT_VOICE
+    voice = TTS_VOICES.get(key_name, TTS_VOICES["madhur"])
+    spoken = text
+    if voice.startswith("hi-IN") and re.search(r"[A-Za-z]", text) and needs_translit(text):
+        spoken = await run_in_threadpool(to_devanagari, text)
+    ck = (voice, spoken)
+    audio = _tts_cache.get(ck)
+    if audio is None:
+        last = None
+        for attempt in range(2):
+            try:
+                audio = await asyncio.wait_for(_edge_synth(spoken, voice), timeout=15)
+                if audio:
+                    break
+            except Exception as e:
+                last = e
+                await asyncio.sleep(0.3)
+        if not audio:
+            log.warning("tts failed: %s %s", type(last).__name__, str(last)[:120])
+            return fail("Awaaz abhi nahi ban payi.", 502)
+        _tts_cache[ck] = audio
+        if len(_tts_cache) > 80:
+            _tts_cache.popitem(last=False)
+    else:
+        _tts_cache.move_to_end(ck)
+    return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
 
 INTENT_MODEL = os.getenv("INTENT_MODEL", "llama-3.1-8b-instant")
 INTENT_SYSTEM = (

@@ -387,7 +387,7 @@
   .voice-x { position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 14px; width: 44px; height: 44px; }
   .vbars { display: flex; align-items: center; gap: 6px; height: 40px; }
   .vbars i { width: 5px; height: 8px; border-radius: 4px; background: linear-gradient(var(--accent), var(--accent-2)); box-shadow: 0 0 10px var(--glow); }
-  .voice[data-state="listening"] .vbars i, .voice[data-state="speaking"] .vbars i { animation: vbar .9s ease-in-out infinite; }
+  .voice[data-state="listening"] .vbars i, .voice[data-state="hearing"] .vbars i, .voice[data-state="speaking"] .vbars i { animation: vbar .9s ease-in-out infinite; }
   .vbars i:nth-child(2) { animation-delay: .1s; } .vbars i:nth-child(3) { animation-delay: .2s; } .vbars i:nth-child(4) { animation-delay: .3s; } .vbars i:nth-child(5) { animation-delay: .2s; } .vbars i:nth-child(6) { animation-delay: .1s; }
   @keyframes vbar { 50% { height: 36px; } }
   .v-status { font-family: var(--display); font-size: 1.2rem; font-weight: 600; }
@@ -576,6 +576,7 @@
     <h3 id="set-title">Settings</h3>
     <div class="set-row"><span>Mode</span><div class="seg" data-key="mode"><button type="button" data-val="normal">Normal</button><button type="button" data-val="study">Study</button><button type="button" data-val="coder">Coder</button><button type="button" data-val="funny">Funny</button></div></div>
     <div class="set-row"><span>Mic language</span><div class="seg" data-key="lang"><button type="button" data-val="hi-IN">Hindi</button><button type="button" data-val="en-IN">English</button></div></div>
+    <div class="set-row"><span>Assistant voice</span><div class="seg" data-key="voice"><button type="button" data-val="madhur">Madhur</button><button type="button" data-val="swara">Swara</button><button type="button" data-val="prabhat">Prabhat</button><button type="button" data-val="neerja">Neerja</button></div></div>
     <div class="set-row"><span>Read replies aloud</span><div class="seg" data-key="autoread"><button type="button" data-val="off">Off</button><button type="button" data-val="on">On</button></div></div>
     <div class="set-row"><span>Text size</span><div class="seg" data-key="size"><button type="button" data-val="15px">Small</button><button type="button" data-val="16px">Medium</button><button type="button" data-val="18px">Large</button></div></div>
     <div class="set-row"><span>Accent colour</span><div class="seg swatch" data-key="accent">
@@ -679,7 +680,7 @@ function getRandomPrompts(count = 4) {
   let activeController = null, stoppedByUser = false;
   let listening = false, speaking = false, voiceOn = false, vBusy = false, sayId = 0;
   const SET_KEY = 'jarvis_settings';
-  const S = Object.assign({ lang: 'hi-IN', autoread: 'off', size: '16px', mode: 'normal', accent: 'cyan', name: '', nameAsked: false, imgStyle: 'auto', imgRatio: 'square' }, (() => { try { return JSON.parse(localStorage.getItem(SET_KEY)) || {}; } catch (e) { return {}; } })());
+  const S = Object.assign({ lang: 'hi-IN', voice: 'madhur', autoread: 'off', size: '16px', mode: 'normal', accent: 'cyan', name: '', nameAsked: false, imgStyle: 'auto', imgRatio: 'square' }, (() => { try { return JSON.parse(localStorage.getItem(SET_KEY)) || {}; } catch (e) { return {}; } })());
 
   function loadChats() {
     try {
@@ -1402,6 +1403,7 @@ function getRandomPrompts(count = 4) {
 
   async function sendMessage(textOverride) {
     if (busy) return;
+    if (!voiceOn) player.stop();
     const fromBox = typeof textOverride !== 'string';
     const imgs = fromBox ? pendingImages.slice() : [];
     const text = (fromBox ? input.value : textOverride).trim() || (imgs.length ? 'Is photo ke baare mein batao.' : '');
@@ -1461,7 +1463,7 @@ function getRandomPrompts(count = 4) {
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history, mode: S.mode, user_name: S.name || '', client_id: CLIENT_ID, images: images && images.length ? images : undefined }),
+        body: JSON.stringify({ message: text, history, mode: S.mode, user_name: S.name || '', client_id: CLIENT_ID, voice: voiceOn, images: images && images.length ? images : undefined }),
         signal: controller.signal
       });
       let data = null;
@@ -1596,11 +1598,11 @@ function getRandomPrompts(count = 4) {
   async function tryStream(chatId, text, history, signal, arm, images) {
     let res;
     try {
-      res = await fetch(API_URL + '/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, history, mode: S.mode, user_name: S.name || '', client_id: CLIENT_ID, images: images && images.length ? images : undefined }), signal });
+      res = await fetch(API_URL + '/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, history, mode: S.mode, user_name: S.name || '', client_id: CLIENT_ID, voice: voiceOn, images: images && images.length ? images : undefined }), signal });
     } catch (e) { if (e && e.name === 'AbortError') throw e; return false; }
     if (!res.ok || !res.body) return false;
 
-    let acc = '', el = null, body = null, timer = 0, err = '';
+    let acc = '', el = null, body = null, timer = 0, err = '', live = false;
     const draw = () => {
       timer = 0;
       if (!body) return;
@@ -1616,7 +1618,7 @@ function getRandomPrompts(count = 4) {
       const storedBot = pushMessage(chatId, 'bot', acc);
       if (el && el.isConnected) { draw(); el.classList.remove('streaming'); el._raw = acc; if (storedBot) el._message = storedBot; }
       else if (chatId === currentChatId) appendMessage(storedBot || { role: 'bot', content: acc });
-      if (voiceOn) voiceSpeak(acc); else if (S.autoread === 'on') say(acc);
+      if (live) player.end();
     };
     const reader = res.body.getReader(), dec = new TextDecoder();
     let buf = '';
@@ -1643,7 +1645,9 @@ function getRandomPrompts(count = 4) {
               thread.appendChild(el);
               typingEl.hidden = true;
             }
+            if (!acc && (voiceOn || S.autoread === 'on')) { live = true; player.begin(voiceOn ? vResume : null); }
             acc += j.t;
+            if (live) { player.feed(j.t); if (voiceOn) vText.textContent = acc.length > 150 ? '…' + acc.slice(-150) : acc; }
             schedule();
           }
         }
@@ -1731,61 +1735,301 @@ function getRandomPrompts(count = 4) {
   $('settings').addEventListener('close', () => { const c = getChat(); if (!c || !c.messages.length) renderChat(); });
   if (!S.name && !S.nameAsked && nameDlg.showModal) setTimeout(() => { if (!voiceOn) { nameDlg.showModal(); nmInput.focus(); } }, 2100);
 
-  // ---- Voice mode
-  const SRv = window.SpeechRecognition || window.webkitSpeechRecognition;
+  // ======================================================================
+  // VOICE ENGINE
+  //   Mic  -> VAD (khud pata lagata hai ki bolna kab khatam hua) -> /stt (Groq Whisper)
+  //   Jawab-> sentence by sentence /tts (natural neural awaaz), pehla vakya aate hi bolna shuru
+  // Browser ka SpeechRecognition use nahi hota, isliye har baar Google wali "ting" nahi bajti.
+  // ======================================================================
+  const STT_URL = API_URL.replace(/\/chat$/, '/stt');
+  const TTS_URL = API_URL.replace(/\/chat$/, '/tts');
+  const ACtx = window.AudioContext || window.webkitAudioContext;
+  const HAS_MIC = !!(navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function' && ACtx);
+
+  // ---- awaaz record karne wala (voice activity detection ke saath)
+  function toWav(frames, rate) {
+    let n = 0; for (const f of frames) n += f.length;
+    const all = new Float32Array(n); let p = 0;
+    for (const f of frames) { all.set(f, p); p += f.length; }
+    const OUT = 16000, ratio = rate / OUT, m = Math.max(1, Math.floor(n / ratio));
+    const buf = new ArrayBuffer(44 + m * 2), v = new DataView(buf);
+    const w = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + m * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, OUT, true); v.setUint32(28, OUT * 2, true);
+    v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, m * 2, true);
+    for (let i = 0; i < m; i++) {
+      const a = Math.floor(i * ratio), b = Math.min(n, Math.floor((i + 1) * ratio));
+      let t = 0; for (let k = a; k < b; k++) t += all[k];
+      t = b > a ? t / (b - a) : (all[a] || 0);
+      v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, t)) * 32767, true);
+    }
+    return new Blob([buf], { type: 'audio/wav' });
+  }
+
+  function createRecorder(o) {
+    o = Object.assign({ endSilenceMs: 750, minSpeechMs: 300, maxMs: 25000, waitMs: 0 }, o || {});
+    let stream = null, ctx = null, node = null, srcN = null, sink = null;
+    let armed = false, state = 'wait', pre = [], frames = [], voicedMs = 0, quietMs = 0, runMs = 0, waitedMs = 0, hot = 0, floor = 0.006;
+    const PRE_MAX = 10; // bolne se thoda pehle ki awaaz bhi rakhte hain, taaki pehla shabd na kate
+    const reset = () => { state = 'wait'; pre = []; frames = []; voicedMs = 0; quietMs = 0; runMs = 0; waitedMs = 0; hot = 0; };
+    function emit() {
+      const ok = voicedMs >= o.minSpeechMs, fr = frames;
+      reset();
+      if (!ok) return;            // khaansi / click jaisi chhoti awaaz: ignore, sunte raho
+      armed = false;
+      if (o.onUtterance) o.onUtterance(toWav(fr, ctx.sampleRate));
+    }
+    function onFrame(f) {
+      const dt = f.length / ctx.sampleRate * 1000;
+      let sum = 0; for (let i = 0; i < f.length; i++) sum += f[i] * f[i];
+      const rms = Math.sqrt(sum / f.length);
+      if (o.onLevel) o.onLevel(Math.min(1, rms * 10));
+      const voiced = rms > Math.max(0.012, floor * 3.5);
+      if (state === 'wait') {
+        if (!voiced) floor = Math.min(0.05, floor * 0.95 + rms * 0.05); // kamre ka shor seekhte raho
+        pre.push(f); if (pre.length > PRE_MAX) pre.shift();
+        hot = voiced ? hot + 1 : 0;
+        if (hot >= 2) {
+          state = 'speech'; frames = pre.slice(); pre = []; voicedMs = hot * dt; quietMs = 0; runMs = frames.length * dt;
+          if (o.onSpeechStart) o.onSpeechStart();
+        } else if (o.waitMs) {
+          waitedMs += dt;
+          if (waitedMs >= o.waitMs) { armed = false; reset(); if (o.onTimeout) o.onTimeout(); }
+        }
+      } else {
+        frames.push(f); runMs += dt;
+        if (voiced) { voicedMs += dt; quietMs = 0; } else quietMs += dt;
+        if (quietMs >= o.endSilenceMs || runMs >= o.maxMs) emit();
+      }
+    }
+    return {
+      async open() {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+        ctx = new ACtx();
+        if (ctx.state === 'suspended') await ctx.resume();
+        srcN = ctx.createMediaStreamSource(stream);
+        node = ctx.createScriptProcessor(2048, 1, 1);
+        node.onaudioprocess = (e) => { if (armed) onFrame(new Float32Array(e.inputBuffer.getChannelData(0))); };
+        sink = ctx.createGain(); sink.gain.value = 0;
+        srcN.connect(node); node.connect(sink); sink.connect(ctx.destination);
+      },
+      listen() { reset(); armed = true; },
+      pause() { armed = false; reset(); },
+      flush() { if (armed && state === 'speech') emit(); else { armed = false; reset(); if (o.onTimeout) o.onTimeout(); } },
+      close() {
+        armed = false;
+        try { node && node.disconnect(); srcN && srcN.disconnect(); sink && sink.disconnect(); } catch (e) {}
+        try { stream && stream.getTracks().forEach((t) => t.stop()); } catch (e) {}
+        try { ctx && ctx.close(); } catch (e) {}
+        stream = ctx = node = srcN = sink = null;
+      }
+    };
+  }
+
+  async function transcribe(blob) {
+    const lang = String(S.lang || 'hi-IN').startsWith('en') ? 'en' : 'hi';
+    const ctrl = new AbortController(), to = setTimeout(() => ctrl.abort(), 30000);
+    try {
+      const r = await fetch(STT_URL + '?lang=' + lang, { method: 'POST', headers: { 'Content-Type': 'audio/wav', 'X-Client-Id': CLIENT_ID }, body: blob, signal: ctrl.signal });
+      let j = null; try { j = await r.json(); } catch (e) {}
+      if (!r.ok) throw new Error((j && j.error) || 'stt failed');
+      return String((j && j.text) || '').trim();
+    } finally { clearTimeout(to); }
+  }
+
+  // ---- bolne wala: text ko vakyon mein todta hai, har vakya /tts se laata hai, ek ke baad ek bajata hai
+  const EMOJI_RE = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu;
+  const speakable = (t) => String(t || '')
+    .replace(/```[\s\S]*?```/g, ' code chat mein hai. ').replace(/https?:\/\/\S+/g, ' ').replace(EMOJI_RE, '')
+    .replace(/^\s*Tip\s*:-?\s*/gim, 'Tip. ').replace(/[*_`#>~|]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  // streaming text -> bolne layak tukde. Pehla tukda jaldi (18+ akshar), baaki thode lambe (40+) taaki beech mein ruk-ruk na ho.
+  function chunkSpeech(buf, pend, sent, final) {
+    const out = [], re = /[.!?।…]+["'’)\]]*\s+|\n+/g;
+    let last = 0, m;
+    while ((m = re.exec(buf))) {
+      const end = m.index + m[0].length, joined = pend + buf.slice(last, end);
+      last = end;
+      if (speakable(joined).length >= (sent + out.length ? 40 : 18)) { out.push(joined); pend = ''; } else pend = joined;
+    }
+    buf = buf.slice(last);
+    while (buf.length > 170) { // bina full-stop ka lamba hissa: comma par todo
+      let k = buf.lastIndexOf(',', 150); if (k < 60) k = buf.lastIndexOf(' ', 150); if (k < 60) break;
+      out.push(pend + buf.slice(0, k + 1)); pend = ''; buf = buf.slice(k + 1);
+    }
+    if (final) { const rest = pend + buf; if (speakable(rest)) out.push(rest); pend = ''; buf = ''; }
+    return { out, buf, pend };
+  }
+
+  const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+  const player = (() => {
+    const audio = new Audio();
+    audio.preload = 'auto'; audio.setAttribute('playsinline', '');
+    let queue = [], buf = '', pend = '', sent = 0, finished = true, running = false, gen = 0, curRes = null, idleCb = null;
+    let fails = 0, downUntil = 0;
+
+    async function fetchAudio(text) {
+      if (Date.now() < downUntil) return null;            // server TTS abhi band hai -> seedha browser voice
+      const ctrl = new AbortController(), to = setTimeout(() => ctrl.abort(), 15000);
+      try {
+        const r = await fetch(TTS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, voice: S.voice, client_id: CLIENT_ID }), signal: ctrl.signal });
+        if (!r.ok || r.status === 204) throw new Error('tts ' + r.status);
+        const b = await r.blob();
+        if (!b.size) throw new Error('empty');
+        fails = 0;
+        return URL.createObjectURL(b);
+      } catch (e) {
+        if (++fails >= 2) { downUntil = Date.now() + 60000; fails = 0; }
+        return null;
+      } finally { clearTimeout(to); }
+    }
+
+    // fallback: browser ki apni voice, par sabse achhi wali chunke
+    function bestVoice(wantHi) {
+      let vs = []; try { vs = speechSynthesis.getVoices() || []; } catch (e) {}
+      const score = (v) => {
+        const n = (v.name + ' ' + v.lang).toLowerCase();
+        let sc = 0;
+        if (/natural|neural|online|enhanced|premium/.test(n)) sc += 6;
+        if (/google/.test(n)) sc += 3;
+        if (/madhur|swara|neerja|prabhat|lekha|rishi|kalpana|hemant/.test(n)) sc += 4;
+        if (v.lang && v.lang.toLowerCase().replace('_', '-') === (wantHi ? 'hi-in' : 'en-in')) sc += 5;
+        else if (v.lang && v.lang.toLowerCase().startsWith(wantHi ? 'hi' : 'en')) sc += 1;
+        else sc -= 10;
+        return sc;
+      };
+      return vs.map((v) => [score(v), v]).sort((a, b) => b[0] - a[0]).map((x) => x[1])[0] || null;
+    }
+    function browserSay(text) {
+      return new Promise((res) => {
+        if (!('speechSynthesis' in window)) return res();
+        const hi = /[\u0900-\u097F]/.test(text), u = new SpeechSynthesisUtterance(text), v = bestVoice(hi);
+        if (v) { u.voice = v; u.lang = v.lang; } else u.lang = hi ? 'hi-IN' : 'en-IN';
+        u.rate = 1.02; u.pitch = 1;
+        curRes = res; u.onend = u.onerror = () => res();
+        try { speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) { res(); }
+      });
+    }
+    function playUrl(url) {
+      return new Promise((res) => {
+        curRes = res;
+        const done = () => { audio.onended = audio.onerror = null; try { URL.revokeObjectURL(url); } catch (e) {} res(); };
+        audio.onended = done; audio.onerror = done;
+        audio.src = url;
+        const p = audio.play(); if (p && p.catch) p.catch(done);
+      });
+    }
+
+    function onStart() { if (!speaking) { speaking = true; refreshOrb(); if (voiceOn) vSet('speaking', 'Bol raha hoon…'); } }
+    function idle() {
+      if (speaking) { speaking = false; refreshOrb(); }
+      const cb = idleCb; idleCb = null; if (cb) cb();
+    }
+    async function run() {
+      running = true; const g = gen;
+      while (g === gen && queue.length) {
+        const item = queue.shift(), url = await item.p;
+        if (g !== gen) { if (url) try { URL.revokeObjectURL(url); } catch (e) {} break; }
+        onStart();
+        await (url ? playUrl(url) : browserSay(item.text));
+      }
+      if (g === gen) { running = false; if (finished && !queue.length) idle(); }
+    }
+    function push(text) {
+      const t = speakable(text); if (!t) return;
+      sent++; queue.push({ text: t, p: fetchAudio(t) });     // fetch turant shuru: agla vakya pehle se ready rehta hai
+      if (!running) run();
+    }
+    function take(final) {
+      const r = chunkSpeech(buf, pend, sent, final);
+      buf = r.buf; pend = r.pend; r.out.forEach(push);
+    }
+    return {
+      active: () => !finished || running || queue.length > 0,
+      begin(cb) { this.stop(); finished = false; idleCb = cb || null; },
+      feed(chunk) { if (finished) return; buf += chunk; take(false); },
+      end() { if (finished) return; finished = true; take(true); if (!running && !queue.length) idle(); },
+      stop() {
+        gen++; finished = true; running = false; buf = ''; pend = ''; sent = 0; idleCb = null;
+        queue.forEach((i) => i.p.then((u) => { if (u) try { URL.revokeObjectURL(u); } catch (e) {} }));
+        queue = [];
+        try { audio.pause(); } catch (e) {} try { speechSynthesis.cancel(); } catch (e) {}
+        if (curRes) { const r = curRes; curRes = null; r(); }
+        if (speaking) { speaking = false; refreshOrb(); }
+      },
+      unlock() { // user ke tap par hi audio chalane ki ijazat milti hai (iPhone/Chrome rule)
+        try { audio.src = SILENT_WAV; const p = audio.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+        try { speechSynthesis.getVoices(); } catch (e) {}
+      }
+    };
+  })();
+
+  function say(raw, done) { player.begin(done); player.feed(String(raw || '')); player.end(); }
+
+  // ---- Voice mode screen
   const voiceEl = $('voice'), vStatus = $('v-status'), vText = $('v-text'), voiceBtn = $('voice-btn');
-  let vRec = null, vTimer = 0;
+  let vRec = null, vToken = 0, vResumeTimer = 0;
   $('vorb').append(makeRing(), makeAvatar('lg'));
   const vSet = (state, msg) => { voiceEl.dataset.state = state; vStatus.textContent = msg; };
+
   function vListen() {
-    if (!voiceOn || listening || busy || speaking || vBusy) return;
-    const rec = new SRv(); vRec = rec;
-    rec.lang = S.lang; rec.interimResults = true; rec.continuous = false;
-    let got = '';
-    rec.onstart = () => { listening = true; refreshOrb(); vSet('listening', 'Sun raha hoon…'); vText.textContent = ''; };
-    rec.onresult = (e) => { got = ''; for (const r of e.results) got += r[0].transcript; vText.textContent = got; };
-    rec.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { toast('Mic ki permission do'); closeVoice(); } };
-    rec.onend = () => {
-      listening = false; refreshOrb();
-      if (!voiceOn) return;
-      if (got.trim()) { vSet('thinking', 'Soch raha hoon…'); vBusy = true; sendMessage(got.trim()).finally(() => { vBusy = false; }); }
-      else vSet('idle', 'Tap karke bolo');
-    };
-    try { rec.start(); } catch (err) { listening = false; }
+    if (!voiceOn || !vRec || listening || speaking || busy || vBusy || player.active()) return;
+    listening = true; refreshOrb(); vSet('listening', 'Sun raha hoon…'); vRec.listen();
   }
-  function voiceSpeak(raw) {
-    vSet('speaking', 'Bol raha hoon…');
-    vText.textContent = raw.length > 150 ? raw.slice(0, 150) + '…' : raw;
-    say(raw, () => { if (voiceOn) vSet('idle', 'Tap karke bolo'); });
+  function vResume() { // bolna khatam -> thodi der baad (speaker ki goonj khatam hone do) phir sunna shuru
+    clearTimeout(vResumeTimer);
+    vResumeTimer = setTimeout(vListen, 350);
   }
-  function openVoice() {
-    if (!SRv) { toast('Voice mode ke liye Chrome use karo'); return; }
-    voiceOn = true; voiceEl.hidden = false; vSet('idle', 'Tap karke bolo'); vText.textContent = '';
-    try { window.speechSynthesis.cancel(); } catch (e) {}
-    clearInterval(vTimer); vTimer = setInterval(vListen, 1200); vListen();
+  async function vHandle(blob) {
+    const my = vToken;
+    listening = false; refreshOrb(); vBusy = true; vSet('thinking', 'Soch raha hoon…');
+    try {
+      const text = await transcribe(blob);
+      if (!voiceOn || my !== vToken) return;
+      if (!text) { toast('Samajh nahi aaya, dobara bolo'); return; }
+      vText.textContent = text;
+      await sendMessage(text);
+    } catch (e) {
+      if (voiceOn && my === vToken) toast('Awaaz samajh nahi aayi, dobara bolo');
+    } finally {
+      vBusy = false;
+      if (voiceOn && my === vToken && !player.active()) vResume();
+    }
+  }
+  async function openVoice() {
+    if (!HAS_MIC) { toast('Is browser mein mic support nahi hai. Chrome ya Safari use karo'); return; }
+    if (voiceOn) return;
+    voiceOn = true; vToken++; voiceEl.hidden = false; vSet('idle', 'Mic chalu ho raha hai…'); vText.textContent = '';
+    player.stop(); player.unlock();
+    try { fetch(API_URL.replace(/\/chat$/, '/health'), { cache: 'no-store' }).catch(() => {}); } catch (e) {} // server ko jagao
+    const rec = createRecorder({
+      endSilenceMs: 750,
+      onSpeechStart: () => { if (voiceOn && listening) vSet('hearing', 'Sun raha hoon…'); },
+      onUtterance: (blob) => { vHandle(blob); }
+    });
+    try { await rec.open(); } catch (e) { rec.close(); toast('Mic ki permission do'); closeVoice(); return; }
+    if (!voiceOn) { rec.close(); return; } // permission ke dauran band kar diya
+    vRec = rec; vListen();
   }
   function closeVoice() {
-    voiceOn = false; clearInterval(vTimer);
-    try { if (vRec) vRec.abort(); window.speechSynthesis.cancel(); } catch (e) {}
-    sayId++; speaking = false; listening = false; voiceEl.hidden = true; refreshOrb();
+    voiceOn = false; vToken++; clearTimeout(vResumeTimer);
+    player.stop();
+    if (vRec) { vRec.close(); vRec = null; }
+    vBusy = false; speaking = false; listening = false; voiceEl.hidden = true; refreshOrb();
   }
   voiceBtn.addEventListener('click', openVoice);
   $('voice-close').addEventListener('click', closeVoice);
   $('vorb').addEventListener('click', () => {
-    if (speaking) { sayId++; try { window.speechSynthesis.cancel(); } catch (e) {} speaking = false; refreshOrb(); vSet('idle', 'Tap karke bolo'); }
-    else vListen();
+    if (!voiceOn) return;
+    if (speaking || player.active()) { player.stop(); vSet('idle', 'Bolo, main sun raha hoon'); vResume(); }
+    else if (!listening && !vBusy) vListen();
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && voiceOn) closeVoice(); });
-  if (!SRv) voiceBtn.hidden = true;
+  if (!HAS_MIC) voiceBtn.hidden = true;
 
-  function say(raw, done) {
-    if (!('speechSynthesis' in window)) { if (done) done(); return; }
-    const t = raw.replace(/```[\s\S]*?```/g, ' code block ').replace(/[*_`#>]/g, '');
-    const u = new SpeechSynthesisUtterance(t);
-    u.lang = /[\u0900-\u097F]/.test(t) ? 'hi-IN' : 'en-IN';
-    const my = ++sayId; speaking = true; refreshOrb();
-    u.onend = u.onerror = () => { if (my !== sayId) return; speaking = false; refreshOrb(); if (done) done(); };
-    window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+  function voiceSpeak(raw) {
+    vText.textContent = raw.length > 150 ? raw.slice(0, 150) + '…' : raw;
+    say(raw, vResume);
   }
 
   function startRename(chat, btn) {
@@ -1821,17 +2065,13 @@ function getRandomPrompts(count = 4) {
   syncSettingsUI();
 
   function speak(btn) {
-    if (!('speechSynthesis' in window)) { toast('Is browser mein voice support nahi hai'); return; }
-    const ss = window.speechSynthesis;
-    if (ss.speaking) { ss.cancel(); if (btn.dataset.on) { delete btn.dataset.on; return; } }
+    const was = btn.dataset.on;
+    player.stop();
+    document.querySelectorAll('[data-speak][data-on]').forEach((x) => delete x.dataset.on);
+    if (was) return;
     const raw = btn.closest('.msg')._raw || '';
-    const t = raw.replace(/```[\s\S]*?```/g, ' code block ').replace(/[*_`#>]/g, '');
-    const u = new SpeechSynthesisUtterance(t);
-    u.lang = /[\u0900-\u097F]/.test(t) ? 'hi-IN' : 'en-IN';
-    const my = ++sayId; speaking = true; refreshOrb();
-    u.onend = u.onerror = () => { delete btn.dataset.on; if (my === sayId) { speaking = false; refreshOrb(); } };
     btn.dataset.on = '1';
-    ss.speak(u);
+    say(raw, () => { delete btn.dataset.on; });
   }
 
   function regenerate() {
@@ -1847,21 +2087,39 @@ function getRandomPrompts(count = 4) {
     if (prev) requestReply(chat.id, prev.content);
   }
 
+  // ---- Composer mic (bol kar likhna): wahi recorder + Whisper, koi Google "ting" nahi
   const micBtn = $('mic-btn');
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) micBtn.hidden = true;
+  if (!HAS_MIC) micBtn.hidden = true;
   else {
-    let rec = null, on = false, base = '';
-    micBtn.addEventListener('click', () => {
-      if (on) { rec.stop(); return; }
-      rec = new SR();
-      rec.lang = S.lang; rec.interimResults = true; rec.continuous = false;
-      base = input.value.trim() ? input.value.trim() + ' ' : '';
-      rec.onstart = () => { on = true; listening = true; refreshOrb(); micBtn.classList.add('listening'); };
-      rec.onresult = (e) => { let t = ''; for (const r of e.results) t += r[0].transcript; input.value = base + t; autosize(); };
-      rec.onerror = (e) => { if (e.error === 'not-allowed') toast('Mic ki permission do'); };
-      rec.onend = () => { on = false; listening = false; refreshOrb(); micBtn.classList.remove('listening'); input.focus(); };
-      try { rec.start(); } catch (err) {}
+    let mrec = null, on = false;
+    const stopMic = () => {
+      on = false; listening = false; refreshOrb(); micBtn.classList.remove('listening');
+      if (mrec) { mrec.close(); mrec = null; }
+    };
+    micBtn.addEventListener('click', async () => {
+      if (on) { if (mrec) mrec.flush(); return; }   // dobara dabane par: bas karo
+      if (voiceOn) return;
+      on = true; player.stop(); player.unlock();
+      const base = input.value.trim() ? input.value.trim() + ' ' : '';
+      const rec = mrec = createRecorder({
+        endSilenceMs: 1100, waitMs: 8000,
+        onSpeechStart: () => { micBtn.classList.add('listening'); },
+        onTimeout: () => { if (mrec === rec) { stopMic(); toast('Kuch sunai nahi diya'); } },
+        onUtterance: async (blob) => {
+          if (mrec === rec) { micBtn.classList.remove('listening'); micBtn.classList.add('busy'); }
+          try {
+            const text = await transcribe(blob);
+            if (text) { input.value = base + text; autosize(); }
+            else toast('Samajh nahi aaya, dobara bolo');
+          } catch (e) { toast('Awaaz samajh nahi aayi, dobara try karo'); }
+          micBtn.classList.remove('busy');
+          if (mrec === rec) stopMic();
+          input.focus();
+        }
+      });
+      try { await rec.open(); } catch (e) { stopMic(); toast('Mic ki permission do'); return; }
+      if (!on || mrec !== rec) { rec.close(); return; }
+      listening = true; refreshOrb(); micBtn.classList.add('listening'); rec.listen();
     });
   }
 
