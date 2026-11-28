@@ -839,18 +839,6 @@
   html[data-theme="light"] .action-divider { background:rgba(28,117,158,.2); }
 
   @media (max-width:480px) and (min-height:780px) { .prompt:nth-child(n+4) { display:flex; } }
-  
-/* Vision Image Styles */
-.mic.active-img { color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); }
-.img-preview-bar {
-  display: flex; align-items: center; gap: 10px; padding: 8px 12px;
-  background: var(--surface-2); border-radius: 12px; margin-bottom: 8px;
-  border: 1px solid var(--line); animation: botIn .2s ease;
-}
-.img-preview-bar img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
-.img-preview-bar span { flex: 1; font-size: 0.85rem; color: var(--muted); }
-.img-preview-bar button { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--bg); color: var(--danger); }
-
 </style>
 </head>
 <body>
@@ -933,14 +921,6 @@
           <label class="sr-only" for="user-input">Message JARVIS</label>
           <textarea id="user-input" rows="1" placeholder="Message JARVIS…" enterkeyhint="send" autocomplete="off"></textarea>
           <button class="mic" id="voice-btn" type="button" aria-label="Voice mode" title="Voice mode"><svg class="ic"><use href="#i-wave"/></svg></button>
-          <button class="mic" id="img-btn" type="button" aria-label="Upload Image" title="Photo bhejo">
-  <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-    <circle cx="8.5" cy="8.5" r="1.5"></circle>
-    <polyline points="21 15 16 10 5 21"></polyline>
-  </svg>
-</button>
-<input type="file" id="file-input" accept="image/*" hidden>
           <button class="mic" id="mic-btn" type="button" aria-label="Speak your message" title="Bol kar likhein"><svg class="ic"><use href="#i-mic"/></svg></button>
           <button class="send" id="send-btn" type="button" aria-label="Send message" disabled><svg class="ic"><use href="#i-send"/></svg></button>
         </div>
@@ -1562,96 +1542,21 @@ function getRandomPrompts(count = 4) {
       .replace(/\s+/g, ' ').trim()
       .slice(0, 500)
   });
-  
-  // ===== IMAGE VISION LOGIC =====
-imgBtn.addEventListener('click', () => {
-  fileInput.click();
-});
-
-fileInput.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  if (file.size > 4 * 1024 * 1024) {
-    toast('Image 4MB se choti honi chahiye');
-    fileInput.value = '';
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    selectedImageBase64 = event.target.result;
-    toast('Image attach ho gayi! Ab send dabao.');
-    imgBtn.classList.add('active-img');
-    input.placeholder = "Image ke baare mein kuch puchein...";
-    autosize();
-  };
-  reader.readAsDataURL(file);
-});
-
-async function requestVisionReply(chatId, text, imageBase64) {
-  const chat = getChat(chatId);
-  if (!chat) return;
-  busy = true; pendingChatId = chatId;
-  autosize();
-  clearError();
-  updateTyping();
-  typingText.textContent = 'JARVIS image dekh raha hai...';
-  
-  try {
-    const res = await fetch(API_URL.replace('/chat', '/chat/vision'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: text || "Is image mein kya hai?",
-        image: imageBase64,
-        history: chat.messages.slice(-6, -1).map(sanitizeForServer).filter(m => m.content),
-        style: S.mode,  // TUMAHRE CODE MEIN S.mode hai
-        user_name: S.name || '',
-        mode: 'vision',
-        client_id: CLIENT_ID
-      })
-    });
-    const data = await res.json();
-    if (data.reply) {
-      pushMessage(chatId, 'bot', data.reply);
-      if (chatId === currentChatId) appendMessage({ role: 'bot', content: data.reply });
-      if (voiceOn) voiceSpeak(data.reply); else if (S.autoread === 'on') say(data.reply);
-    } else if (data.error) {
-      showError(data.error, '', () => requestVisionReply(chatId, text, imageBase64));
-    }
-  } catch (err) {
-    showError("Image process nahi ho payi.", "Check your connection.", () => requestVisionReply(chatId, text, imageBase64));
-  } finally {
-    busy = false; pendingChatId = null;
-    updateTyping();
-    autosize();
-  }
-}
-// ===== END IMAGE VISION LOGIC =====
 
   async function sendMessage(textOverride) {
     if (busy) return;
     const text = (typeof textOverride === 'string' ? textOverride : input.value).trim();
-    if (!text && !selectedImageBase64) return;
+    if (!text) return;
     const chat = getChat();
     if (!chat) return;
     clearError();
     sendBtn.classList.remove('pulse'); void sendBtn.offsetWidth; sendBtn.classList.add('pulse');
     sendBtn.addEventListener('animationend', () => sendBtn.classList.remove('pulse'), { once: true });
-    const displayMsg = text || (selectedImageBase64 ? "📸 [Image]" : "");
-pushMessage(chat.id, 'user', displayMsg);
+    pushMessage(chat.id, 'user', text);
     input.value = '';
     autosize();
-    await appendMessage({ role: 'user', content: displayMsg });
-
-if (selectedImageBase64) {
-  const imgData = selectedImageBase64;
-  selectedImageBase64 = null;
-  imgBtn.classList.remove('active-img');
-  input.placeholder = "Message JARVIS…";
-  await requestVisionReply(chat.id, text, imgData);
-} else {
-  if (getChat(chat.id)) await requestReply(chat.id, text);
-}
+    await appendMessage({ role: 'user', content: text });
+    if (getChat(chat.id)) await requestReply(chat.id, text);
   }
 
   async function requestReply(chatId, text) {
@@ -2079,9 +1984,6 @@ if (selectedImageBase64) {
   }
 
   const micBtn = $('mic-btn');
-  const imgBtn = $('img-btn');
-const fileInput = $('file-input');
-let selectedImageBase64 = null;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) micBtn.hidden = true;
   else {

@@ -34,9 +34,6 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_STYLE = "dost"
 # Fast model
 DEFAULT_MODEL = "openai/gpt-oss-120b"
-# NAYA: Vision model (Image samajhne ke liye)
-VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
-
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "500")) # Thoda kam kiya fast response ke liye
 HISTORY_MESSAGES = 6
 HISTORY_CHARS = 600
@@ -99,7 +96,6 @@ MODE_NOTES = {
     "study": "STUDY MODE: explain step by step like a patient teacher, with one simple example. Use plain numbering like 1. 2. 3. for steps.",
     "coder": "CODER MODE: you are an expert programmer. Put working code inside fenced code blocks with the language name. Keep the explanation short and practical.",
     "funny": "FUNNY MODE: be witty and playful with light jokes and a few emojis, but keep the answer correct.",
-    "vision": "VISION MODE: user has sent an image. Analyze it carefully and answer the text question accurately.",
 }
 CODER_LANGUAGE_RULE = "LANGUAGE RULES:\n- Reply ONLY in English or Hinglish (Roman script).\n- NEVER use Devanagari script.\n"
 
@@ -240,7 +236,7 @@ http = requests.Session()
 def call_groq(payload: dict, model_name: str) -> str:
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
     payload["model"] = model_name
-    r = http.post(GROQ_URL, headers=headers, json=payload, timeout=60) # Timeout badhaya vision ke liye
+    r = http.post(GROQ_URL, headers=headers, json=payload, timeout=30)
     r.raise_for_status()
     return (r.json()["choices"][0]["message"].get("content") or "").strip()
 
@@ -250,7 +246,7 @@ def fail(message: str, status: int = 502):
 @app.get("/")
 @app.get("/health")
 def health():
-    return {"status": "ok", "bot": BOT_NAME, "stream": True, "vision": True}
+    return {"status": "ok", "bot": BOT_NAME, "stream": True}
 
 def build_payload(req: ChatRequest):
     mode = req.mode if req.mode in MODE_NOTES else "normal"
@@ -367,70 +363,6 @@ def chat_stream(req: ChatRequest, request: Request):
 
     return StreamingResponse(gen(), media_type="text/event-stream", headers=headers)
 
-# ---------------------------------------------------------------------------
-# NAYA: IMAGE VISION ENDPOINT
-# ---------------------------------------------------------------------------
-class VisionRequest(ChatRequest):
-    image: str = ""  # base64 encoded image
-
-@app.post("/chat/vision")
-def chat_vision(req: VisionRequest, request: Request):
-    if not GROQ_API_KEY:
-        return fail("Server setup adhura hai: GROQ_API_KEY set nahi hai.", 500)
-    
-    # Admin tracking ke liye mode 'vision' set karo
-    req.mode = "vision"
-    blocked = gate(req, request)
-    if blocked:
-        return blocked
-
-    if not req.image:
-        return fail("Koi image nahi mili.", 400)
-
-    # Base64 prefix hatao agar hai
-    image_data = req.image
-    if "," in image_data:
-        image_data = image_data.split(",")[1]
-
-    # Vision messages format
-    messages = [
-        {"role": "system", "content": system_prompt(req.style, req.user_name) + "\n" + MODE_NOTES["vision"]},
-        {
-            "role": "user",
-            "content": [
-                {"type": "text", "text": req.message or "Is image mein kya hai? Describe it in detail."},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
-            ]
-        }
-    ]
-
-    payload = {
-        "messages": messages,
-        "model": VISION_MODEL,
-        "temperature": 0.7,
-        "max_tokens": 800  # Image description ke liye thoda zyada
-    }
-
-    try:
-        headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-        r = http.post(GROQ_URL, headers=headers, json=payload, timeout=60)
-        r.raise_for_status()
-        reply = (r.json()["choices"][0]["message"].get("content") or "").strip()
-        if not reply:
-            return fail("Image se koi jawab nahi mila.")
-        return {"reply": clean_output(reply)}
-    except requests.exceptions.HTTPError as e:
-        code = e.response.status_code if e.response is not None else 0
-        return fail(f"Vision model error (code {code}). Image chhoti karke try karo.")
-    except requests.exceptions.Timeout:
-        return fail("Image process karne mein time lag raha hai. Dobara try karo.")
-    except Exception:
-        log.exception("vision failed")
-        return fail("Image process nahi ho payi. Dobara try karo.")
-
-# ---------------------------------------------------------------------------
-# ADMIN ROUTES
-# ---------------------------------------------------------------------------
 class BlockRequest(BaseModel):
     client_id: str
     blocked: bool = True
